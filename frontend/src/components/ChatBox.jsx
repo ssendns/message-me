@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import Message from "./Message";
+import { formatDate } from "../utils/formatDate";
 
 export default function ChatBox({ messages, currentUserId }) {
   const containerRef = useRef(null);
+  let lastDateLabel = null;
 
   useEffect(() => {
     if (containerRef.current) {
@@ -20,13 +22,25 @@ export default function ChatBox({ messages, currentUserId }) {
       {messages.length === 0 ? (
         <p className="text-sm text-muted">no messages yet</p>
       ) : (
-        messages.map((message, index) => (
-          <Message
-            key={index}
-            message={message}
-            currentUserId={currentUserId}
-          />
-        ))
+        messages.map((message, index) => {
+          const dateLabel = message.createdAt
+            ? formatDate(message.createdAt)
+            : null;
+
+          const showDate = dateLabel && dateLabel !== lastDateLabel;
+          lastDateLabel = dateLabel;
+
+          return (
+            <div key={index}>
+              {showDate && (
+                <div className="text-center text-xs text-muted my-2 uppercase tracking-wide">
+                  {dateLabel}
+                </div>
+              )}
+              <Message message={message} currentUserId={currentUserId} />
+            </div>
+          );
+        })
       )}
     </div>
   );
