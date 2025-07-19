@@ -1,26 +1,27 @@
 import { useEffect, useState } from "react";
 import socket from "../socket";
+import UserList from "../components/UserList";
 
 export default function ChatPage() {
   const [toUsername, setToUsername] = useState("");
   const [toId, setToId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
   const userId = Number(localStorage.getItem("id"));
 
-  const fetchMessages = async () => {
-    if (!toUsername.trim()) return;
-
+  const fetchMessagesByUsername = async (username) => {
     try {
       const res = await fetch(
-        `http://localhost:3000/profile/username/${toUsername}`
+        `http://localhost:3000/profile/username/${username}`
       );
-      if (!res.ok) throw new Error("User not found");
+      if (!res.ok) throw new Error("user not found");
 
       const data = await res.json();
       setToId(data.id);
+      setToUsername(data.username);
 
       const msgRes = await fetch(`http://localhost:3000/messages/${data.id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -35,7 +36,7 @@ export default function ChatPage() {
   };
 
   const send = () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !toId) return;
 
     socket.emit("send_message", {
       from: userId,
@@ -49,7 +50,6 @@ export default function ChatPage() {
 
   useEffect(() => {
     socket.connect();
-
     socket.emit("join", userId);
 
     socket.on("receive_message", (msg) => {
@@ -70,31 +70,22 @@ export default function ChatPage() {
           chat as {username}
         </h1>
 
-        <div className="mb-4 flex gap-2">
-          <input
-            type="text"
-            placeholder="enter username to chat with"
-            value={toUsername}
-            onChange={(e) => setToUsername(e.target.value)}
-            className="flex-1 border border-muted rounded px-4 py-2 focus:outline-none"
-          />
-          <button
-            onClick={fetchMessages}
-            className="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90"
-          >
-            load chat
-          </button>
-        </div>
+        <UserList
+          token={token}
+          currentUserId={userId}
+          activeUsername={toUsername}
+          onSelect={fetchMessagesByUsername}
+        />
 
         <div className="bg-white rounded-card shadow-card p-4 h-64 overflow-y-auto mb-4">
           {messages.length === 0 ? (
             <p className="text-sm text-muted">no messages yet</p>
           ) : (
-            messages.map((msg) => (
+            messages.map((msg, i) => (
               <div
-                key={msg.id}
+                key={i}
                 className={`text-sm my-2 ${
-                  msg.fromId === Number(localStorage.getItem("id"))
+                  msg.fromId === userId
                     ? "text-right text-primary"
                     : "text-left"
                 }`}
