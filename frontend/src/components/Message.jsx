@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Pencil, Trash2, Copy } from "lucide-react";
 import useSocket from "../hooks/useSocket";
+import MessageMenu from "./MessageMenu";
 
 export default function Message({ message, currentUserId }) {
   const isOwn = message.fromId === currentUserId;
@@ -112,40 +112,16 @@ export default function Message({ message, currentUserId }) {
         )}
 
         {menuOpen && (
-          <ul
-            className={`absolute z-50 w-40 bg-white border border-gray-200 rounded-lg shadow-xl text-sm overflow-hidden animate-fade-in
-              ${shouldOpenUpwards ? "bottom-full mb-1" : "top-full mt-1"} 
-              ${isOwn ? "right-0" : "left-0"}`}
-          >
-            {isOwn && (
-              <>
-                <li
-                  onClick={handleEdit}
-                  className="flex items-center gap-2 px-4 py-2 text-black hover:bg-blue-100 cursor-pointer"
-                >
-                  <Pencil size={16} />
-                  edit
-                </li>
-                <li
-                  onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-2 text-black hover:bg-red-100 cursor-pointer"
-                >
-                  <Trash2 size={16} />
-                  delete
-                </li>
-              </>
-            )}
-            <li
-              className="flex items-center gap-2 px-4 py-2 text-black hover:bg-gray-100 cursor-pointer"
-              onClick={() => {
-                navigator.clipboard.writeText(message.content);
-                setMenuOpen(false);
-              }}
-            >
-              <Copy size={16} />
-              copy
-            </li>
-          </ul>
+          <MessageMenu
+            isOwn={isOwn}
+            shouldOpenUpwards={shouldOpenUpwards}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onCopy={() => {
+              navigator.clipboard.writeText(message.content);
+              setMenuOpen(false);
+            }}
+          />
         )}
       </div>
     </div>
