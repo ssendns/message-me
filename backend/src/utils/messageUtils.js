@@ -42,4 +42,39 @@ const deleteMessage = async ({ id, userId }, socket, io) => {
   }
 };
 
-module.exports = { createMessage, deleteMessage };
+async function editMessage({ id, userId, newContent }, socket, io) {
+  try {
+    const existing = await prisma.message.findUnique({ where: { id } });
+
+    if (!existing || existing.fromId !== userId) {
+      socket.emit("error", "you can not edit this message");
+      return;
+    }
+
+    const updated = await prisma.message.update({
+      where: { id },
+      data: {
+        content: newContent,
+        edited: true,
+      },
+    });
+
+    const payload = {
+      id: updated.id,
+      fromId: updated.fromId,
+      toId: updated.toId,
+      content: updated.content,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      edit: updated.edited,
+    };
+
+    io.to(updated.toId.toString()).emit("receive_edited_message", payload);
+    io.to(updated.fromId.toString()).emit("receive_edited_message", payload);
+  } catch (err) {
+    console.error("edit_message failed:", err);
+    socket.emit("error", "message edit failed");
+  }
+}
+
+module.exports = { createMessage, deleteMessage, editMessage };

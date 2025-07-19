@@ -1,5 +1,9 @@
 const { Server } = require("socket.io");
-const { createMessage, deleteMessage } = require("../utils/messageUtils");
+const {
+  createMessage,
+  deleteMessage,
+  editMessage,
+} = require("../utils/messageUtils");
 
 function setupSocket(server) {
   const io = new Server(server, {
@@ -40,6 +44,10 @@ function setupSocket(server) {
       } catch (err) {
         console.error("send_message failed:", err);
       }
+    });
+
+    socket.on("edit_message", (data) => {
+      editMessage(data, socket, io);
     });
 
     socket.on("delete_message", (data) => {
