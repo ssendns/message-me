@@ -71,7 +71,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
         </h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto px-6 bg-gray-50">
         <ChatBox messages={messages} currentUserId={currentUserId} />
       </div>
 

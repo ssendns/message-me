@@ -9,7 +9,7 @@ export default function Message({ message, currentUserId }) {
     });
 
   return (
-    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} my-1`}>
+    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} my-2`}>
       <div
         className={`relative px-4 py-2 max-w-xs break-words rounded-xl ${
           isOwn
