@@ -58,6 +58,61 @@ describe("message routes", () => {
 
     expect(res.statusCode).toBe(401);
   });
+
+  test("user can delete his message", async () => {
+    const msg = await prisma.message.create({
+      data: {
+        content: "to be deleted",
+        fromId: user1.id,
+        toId: user2.id,
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/messages/${msg.id}`)
+      .set("Authorization", `Bearer ${token1}`);
+
+    expect(res.statusCode).toBe(204);
+  });
+
+  test("user cannot delete someone else's message", async () => {
+    const msg = await prisma.message.create({
+      data: {
+        content: "not yours",
+        fromId: user2.id,
+        toId: user1.id,
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/messages/${msg.id}`)
+      .set("Authorization", `Bearer ${token1}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("fails to delete without auth", async () => {
+    const msg = await prisma.message.create({
+      data: {
+        content: "auth required",
+        fromId: user1.id,
+        toId: user2.id,
+      },
+    });
+
+    const res = await request(app).delete(`/messages/${msg.id}`);
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  test("returns 404 for non-existent message", async () => {
+    const res = await request(app)
+      .delete(`/messages/999999`)
+      .set("Authorization", `Bearer ${token1}`);
+
+    expect(res.statusCode).toBe(404);
+  });
+
   afterAll(async () => {
     await prisma.$disconnect();
   });

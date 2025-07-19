@@ -40,4 +40,25 @@ const getMessagesWithUser = async (req, res) => {
   }
 };
 
-module.exports = { sendMessage, getMessagesWithUser };
+const deleteMessage = async (req, res) => {
+  const messageId = Number(req.params.id);
+  const userId = req.user.userId;
+
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+
+  if (!message) {
+    return res.status(404).json({ error: "message not found" });
+  }
+
+  if (message.fromId !== userId) {
+    return res
+      .status(403)
+      .json({ error: "you can only delete your own messages" });
+  }
+
+  await prisma.message.delete({ where: { id: messageId } });
+
+  res.status(204).send();
+};
+
+module.exports = { sendMessage, getMessagesWithUser, deleteMessage };
