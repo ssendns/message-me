@@ -4,30 +4,26 @@ const prisma = require("../src/utils/db");
 
 let token1, token2, user1, user2;
 
-beforeAll(async () => {
-  await prisma.message.deleteMany();
-  await prisma.user.deleteMany();
-
-  const res1 = await request(app).post("/sign-up").send({
-    username: "user1",
-    password: "123",
-  });
-  const res2 = await request(app).post("/sign-up").send({
-    username: "user2",
-    password: "456",
-  });
-
-  token1 = res1.body.user.token;
-  token2 = res2.body.user.token;
-  user1 = res1.body.user;
-  user2 = res2.body.user;
-});
-
-afterAll(async () => {
-  await prisma.$disconnect();
-});
-
 describe("message routes", () => {
+  beforeAll(async () => {
+    await prisma.message.deleteMany();
+    await prisma.user.deleteMany({ where: { username: "user1" } });
+    await prisma.user.deleteMany({ where: { username: "user2" } });
+
+    const res1 = await request(app).post("/sign-up").send({
+      username: "user1",
+      password: "123",
+    });
+    const res2 = await request(app).post("/sign-up").send({
+      username: "user2",
+      password: "456",
+    });
+
+    token1 = res1.body.user.token;
+    token2 = res2.body.user.token;
+    user1 = res1.body.user;
+    user2 = res2.body.user;
+  });
   test("user1 sends a message to user2", async () => {
     const res = await request(app)
       .post("/messages")
@@ -61,5 +57,8 @@ describe("message routes", () => {
       .send({ toId: user1.id, content: "lalala" });
 
     expect(res.statusCode).toBe(401);
+  });
+  afterAll(async () => {
+    await prisma.$disconnect();
   });
 });
