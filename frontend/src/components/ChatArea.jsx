@@ -1,64 +1,19 @@
-import { useEffect, useState } from "react";
-import socket from "../socket";
+import { useState, useEffect } from "react";
 import ChatBox from "./ChatBox";
-import { getMessagesWithUser } from "../services/api";
+import useChatMessages from "../hooks/useChatMessages";
+import useChatList from "../hooks/useChatList";
+import useSocket from "../hooks/useSocket";
 
 export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
-  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const token = localStorage.getItem("token");
+  const { messages } = useChatMessages(currentUserId, toId);
+  const { socket } = useSocket();
 
   useEffect(() => {
-    if (!toId || !token) return;
-
-    const loadMessages = async () => {
-      try {
-        const res = await getMessagesWithUser(toId, token);
-        setMessages(res.messages || []);
-      } catch (err) {
-        console.error("failed to fetch messages:", err);
-      }
-    };
-
-    loadMessages();
-  }, [toId, token]);
-
-  useEffect(() => {
-    if (!toId || !currentUserId) return;
-    console.log("JOINING", currentUserId, toId);
-    socket.emit("join", currentUserId);
-    socket.emit("join_chat", toId.toString());
-
-    const handleReceive = (message) => {
-      if (message.fromId === toId || message.toId === toId) {
-        const newMessage = {
-          ...message,
-          createdAt: message.createdAt || new Date().toISOString(),
-        };
-
-        setMessages((prev) => {
-          const updated = [...prev, newMessage];
-          return updated;
-        });
-      }
-    };
-    socket.on("receive_message", handleReceive);
-
-    return () => {
-      socket.off("receive_message", handleReceive);
-      socket.emit("leave_chat", toId.toString());
-    };
-  }, [currentUserId, toId]);
-
-  useEffect(() => {
-    console.log("setting up delete_message listener");
-    socket.on("delete_message", ({ messageId }) => {
-      console.log("deleting message", messageId);
-      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
-    });
-
-    return () => socket.off("delete_message");
-  }, []);
+    if (toId) {
+      socket.emit("join_chat", toId.toString());
+    }
+  }, [toId, socket]);
 
   const send = () => {
     if (!text.trim() || !toId) return;
@@ -69,6 +24,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
       text,
     });
     setText("");
+    useChatList.refreshChats;
   };
 
   return (
