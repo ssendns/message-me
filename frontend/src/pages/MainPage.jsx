@@ -6,9 +6,11 @@ import { useNavigate } from "react-router-dom";
 
 export default function MainPage() {
   const [selectedChat, setSelectedChat] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
   const token = localStorage.getItem("token");
-  // const username = localStorage.getItem("username");
+  const username = localStorage.getItem("username");
   const userId = Number(localStorage.getItem("id"));
 
   const navigate = useNavigate();
@@ -29,6 +31,16 @@ export default function MainPage() {
   const handleChatSelect = (chat) => {
     setSelectedChat(chat);
   };
+
+  const handleBack = () => {
+    setSelectedChat(null);
+  };
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -61,7 +73,11 @@ export default function MainPage() {
       </div>
 
       <div className="flex flex-1">
-        <div className="w-[400px] border-r bg-white flex flex-col">
+        <div
+          className={`w-full sm:w-[500px] border-r border-muted bg-white relative ${
+            selectedChat && isMobile ? "hidden" : "block"
+          }`}
+        >
           <div className="flex items-center justify-between px-6 py-6 border-b bg-white">
             <h1 className="text-lg font-semibold text-primary">chats</h1>
             <button
@@ -81,12 +97,17 @@ export default function MainPage() {
           </div>
         </div>
 
-        <section className="flex-1 flex flex-col bg-[#f5f7fb]">
+        <section
+          className={`flex-1 flex flex-col bg-gray-50 ${
+            !selectedChat && isMobile ? "hidden" : "flex"
+          }`}
+        >
           {selectedChat ? (
             <ChatArea
               toUsername={selectedChat.username}
               toId={selectedChat.id}
               currentUserId={userId}
+              onBack={handleBack}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted">

@@ -3,7 +3,7 @@ import socket from "../socket";
 import ChatBox from "./ChatBox";
 import { getMessagesWithUser } from "../services/api";
 
-export default function ChatArea({ toUsername, toId, currentUserId }) {
+export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const token = localStorage.getItem("token");
@@ -60,7 +60,13 @@ export default function ChatArea({ toUsername, toId, currentUserId }) {
   return (
     <div className="flex flex-col flex-1 h-full">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white shadow-sm">
-        <h1 className="text-lg font-semibold text-primary">
+        <button
+          onClick={onBack}
+          className="lg:hidden text-muted hover:text-primary"
+        >
+          ←
+        </button>
+        <h1 className="text-lg font-semibold text-primary mx-auto lg:mx-0">
           {toUsername || "chat"}
         </h1>
       </div>
