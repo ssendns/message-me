@@ -39,3 +39,12 @@ export async function updateUser({ newUsername, newPassword, token }) {
 
   return res.json();
 }
+
+export async function deleteMessage(id, token) {
+  const res = await fetch(`http://localhost:3000/messages/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error("failed to delete message");
+}
