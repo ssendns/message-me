@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import socket from "../socket";
 import UserList from "../components/UserList";
+import { getUserByUsername, getMessagesWithUser } from "../services/api";
 
 export default function ChatPage() {
   const [toUsername, setToUsername] = useState("");
@@ -14,21 +15,12 @@ export default function ChatPage() {
 
   const fetchMessagesByUsername = async (username) => {
     try {
-      const res = await fetch(
-        `http://localhost:3000/profile/username/${username}`
-      );
-      if (!res.ok) throw new Error("user not found");
+      const user = await getUserByUsername(username);
+      setToId(user.id);
+      setToUsername(user.username);
 
-      const data = await res.json();
-      setToId(data.id);
-      setToUsername(data.username);
-
-      const msgRes = await fetch(`http://localhost:3000/messages/${data.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const msgData = await msgRes.json();
-      setMessages(msgData.messages || []);
+      const message = await getMessagesWithUser(user.id, token);
+      setMessages(message.messages || []);
     } catch (err) {
       console.error("failed to load messages:", err);
       alert("user not found");

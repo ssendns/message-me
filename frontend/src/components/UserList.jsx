@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getAllUsers } from "../services/api";
 
 export default function UserList({
   token,
@@ -11,11 +12,7 @@ export default function UserList({
   useEffect(() => {
     if (!token) return;
 
-    fetch("http://localhost:3000/profile/all", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setUsers(data));
+    getAllUsers(token).then((data) => setUsers(data));
   }, [token]);
 
   return (
