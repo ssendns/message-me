@@ -2,7 +2,7 @@ import Message from "./Message";
 
 export default function ChatBox({ messages, currentUserId }) {
   return (
-    <div className="bg-white rounded-card shadow-card p-4 h-64 overflow-y-auto mb-4">
+    <div className="flex-1 h-full p-4 overflow-y-auto mb-4">
       {messages.length === 0 ? (
         <p className="text-sm text-muted">no messages yet</p>
       ) : (
