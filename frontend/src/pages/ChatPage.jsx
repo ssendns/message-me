@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import socket from "../socket";
 
 export default function ChatPage() {
-  const [toId, setToId] = useState("");
+  const [toUsername, setToUsername] = useState("");
+  const [toId, setToId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const token = localStorage.getItem("token");
@@ -10,15 +11,27 @@ export default function ChatPage() {
   const userId = Number(localStorage.getItem("id"));
 
   const fetchMessages = async () => {
-    if (!toId) return;
-    const res = await fetch(`http://localhost:3000/messages/${toId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    if (!toUsername.trim()) return;
 
-    const data = await res.json();
-    setMessages(data.messages || []);
+    try {
+      const res = await fetch(
+        `http://localhost:3000/profile/username/${toUsername}`
+      );
+      if (!res.ok) throw new Error("User not found");
+
+      const data = await res.json();
+      setToId(data.id);
+
+      const msgRes = await fetch(`http://localhost:3000/messages/${data.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const msgData = await msgRes.json();
+      setMessages(msgData.messages || []);
+    } catch (err) {
+      console.error("failed to load messages:", err);
+      alert("user not found");
+    }
   };
 
   const send = () => {
@@ -26,7 +39,7 @@ export default function ChatPage() {
 
     socket.emit("send_message", {
       from: userId,
-      to: Number(toId),
+      to: toId,
       text,
     });
 
@@ -60,9 +73,9 @@ export default function ChatPage() {
         <div className="mb-4 flex gap-2">
           <input
             type="text"
-            placeholder="enter user id to chat with"
-            value={toId}
-            onChange={(e) => setToId(e.target.value)}
+            placeholder="enter username to chat with"
+            value={toUsername}
+            onChange={(e) => setToUsername(e.target.value)}
             className="flex-1 border border-muted rounded px-4 py-2 focus:outline-none"
           />
           <button
