@@ -59,12 +59,18 @@ export default function useChatList(token, currentUserId) {
       fetchChats();
     };
 
+    const handleEdit = () => {
+      fetchChats();
+    };
+
     socket.on("receive_message", handleReceive);
     socket.on("delete_message", handleDelete);
+    socket.on("receive_edited_message", handleEdit);
 
     return () => {
       socket.off("receive_message", handleReceive);
       socket.off("delete_message", handleDelete);
+      socket.off("edit_message", handleEdit);
     };
   }, [socket, currentUserId, fetchChats]);
 

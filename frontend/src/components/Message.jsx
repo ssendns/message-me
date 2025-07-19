@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Trash2, Copy } from "lucide-react";
+import { Pencil, Trash2, Copy } from "lucide-react";
 import useSocket from "../hooks/useSocket";
 
 export default function Message({ message, currentUserId }) {
@@ -7,6 +7,8 @@ export default function Message({ message, currentUserId }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [shouldOpenUpwards, setShouldOpenUpwards] = useState(false);
   const messageRef = useRef(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
 
   const { socket, isReady } = useSocket();
 
@@ -23,6 +25,22 @@ export default function Message({ message, currentUserId }) {
       id: message.id,
       userId: currentUserId,
     });
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setMenuOpen(false);
+  };
+
+  const handleEditSubmit = () => {
+    if (editContent.trim() && editContent !== message.content) {
+      socket.emit("edit_message", {
+        id: message.id,
+        userId: currentUserId,
+        newContent: editContent,
+      });
+    }
+    setIsEditing(false);
   };
 
   const handleClickOutside = (e) => {
@@ -60,16 +78,37 @@ export default function Message({ message, currentUserId }) {
             : "bg-gray-200 text-gray-800 rounded-bl-none"
         }`}
       >
-        <div className="pr-7">{message.content}</div>
-
-        {time && (
-          <span
-            className={`absolute bottom-1 right-2 text-[10px] ${
-              isOwn ? "text-white/70" : "text-gray-500"
-            }`}
-          >
-            {time}
-          </span>
+        {isEditing ? (
+          <div className="flex gap-2">
+            <input
+              className="text-sm px-2 py-1 rounded w-full text-black"
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleEditSubmit();
+                if (e.key === "Escape") setIsEditing(false);
+              }}
+              autoFocus
+            />
+            <button
+              onClick={handleEditSubmit}
+              className="text-xs px-2 py-1 bg-primary text-white rounded"
+            >
+              save
+            </button>
+          </div>
+        ) : (
+          <div className="flex">
+            <div className={`${message.edited ? "pr-14" : "pr-5"}`}>
+              {message.content}
+            </div>
+            {time && (
+              <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] text-white opacity-70">
+                {message.edited && <span>edited</span>}
+                <span>{time}</span>
+              </div>
+            )}
+          </div>
         )}
 
         {menuOpen && (
@@ -79,13 +118,22 @@ export default function Message({ message, currentUserId }) {
               ${isOwn ? "right-0" : "left-0"}`}
           >
             {isOwn && (
-              <li
-                onClick={handleDelete}
-                className="flex items-center gap-2 px-4 py-2 text-black hover:bg-red-100 cursor-pointer"
-              >
-                <Trash2 size={16} />
-                delete
-              </li>
+              <>
+                <li
+                  onClick={handleEdit}
+                  className="flex items-center gap-2 px-4 py-2 text-black hover:bg-blue-100 cursor-pointer"
+                >
+                  <Pencil size={16} />
+                  edit
+                </li>
+                <li
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 px-4 py-2 text-black hover:bg-red-100 cursor-pointer"
+                >
+                  <Trash2 size={16} />
+                  delete
+                </li>
+              </>
             )}
             <li
               className="flex items-center gap-2 px-4 py-2 text-black hover:bg-gray-100 cursor-pointer"
