@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { deleteMessage } from "../services/api";
 import { Trash2, Copy } from "lucide-react";
+import socket from "../socket";
 
 export default function Message({ message, currentUserId }) {
   const isOwn = message.fromId === currentUserId;
@@ -18,8 +18,12 @@ export default function Message({ message, currentUserId }) {
 
   const handleDelete = async () => {
     try {
+      console.log("enter");
       const token = localStorage.getItem("token");
-      await deleteMessage(message.id, token);
+      socket.emit("delete_message", {
+        id: message.id,
+        userId: currentUserId,
+      });
     } catch (err) {
       console.error("delete failed", err);
     }
@@ -46,7 +50,7 @@ export default function Message({ message, currentUserId }) {
     if (menuOpen && messageRef.current) {
       const rect = messageRef.current.getBoundingClientRect();
       const distanceFromBottom = window.innerHeight - rect.bottom;
-      setShouldOpenUpwards(distanceFromBottom < 100);
+      setShouldOpenUpwards(distanceFromBottom < 200);
     }
   }, [menuOpen]);
 
