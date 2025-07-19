@@ -1,8 +1,22 @@
+import { useEffect, useRef } from "react";
 import Message from "./Message";
 
 export default function ChatBox({ messages, currentUserId }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [messages]);
   return (
-    <div className="flex-1 h-full p-4 overflow-y-auto mb-4">
+    <div ref={containerRef} className="flex-1 h-full overflow-y-auto">
       {messages.length === 0 ? (
         <p className="text-sm text-muted">no messages yet</p>
       ) : (
