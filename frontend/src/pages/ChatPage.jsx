@@ -10,10 +10,13 @@ export default function ChatPage() {
   const [toId, setToId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
   const userId = Number(localStorage.getItem("id"));
+
+  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 
   const fetchMessagesByUsername = async (username) => {
     try {
@@ -75,19 +78,20 @@ export default function ChatPage() {
         onSelect={fetchMessagesByUsername}
         onLogout={handleLogout}
         onEdit={handleEdit}
+        isOpen={sidebarOpen}
+        toggleSidebar={toggleSidebar}
       />
-      <main className="min-h-screen bg-background text-foreground font-poppins p-layout max-w-screen mx-auto">
+      <main className="min-h-screen w-full bg-background text-foreground font-poppins p-layout mx-auto">
+        <button
+          onClick={toggleSidebar}
+          className="mb-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90"
+        >
+          ☰
+        </button>
         <div className="max-w-xl mx-auto">
           <h1 className="text-2xl font-semibold mb-4 text-primary">
-            chat as {username}
+            chat with {toUsername || "..."}
           </h1>
-
-          <UserList
-            token={token}
-            currentUserId={userId}
-            activeUsername={toUsername}
-            onSelect={fetchMessagesByUsername}
-          />
 
           <ChatBox messages={messages} currentUserId={userId} />
 
@@ -97,11 +101,11 @@ export default function ChatPage() {
               placeholder="type your message..."
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="flex-1 border border-muted rounded px-4 py-2 focus:outline-none"
+              className="flex-1 border border-muted rounded-lg px-4 py-2 focus:outline-none"
             />
             <button
               onClick={send}
-              className="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90"
+              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90"
             >
               send
             </button>
