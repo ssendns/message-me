@@ -1,7 +1,10 @@
 export default function App() {
   return (
-    <div className="font-poppins text-2xl font-bold text-blue-500 bg-red-500">
-      test
+    <div className="bg-background text-foreground max-w-screen mx-auto p-layout font-poppins">
+      <h1 className="text-primary text-2xl font-semibold mb-section">
+        test test
+      </h1>
+      <div className="shadow-card rounded-card bg-white p-4">test</div>
     </div>
   );
 }
