@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function MainPage() {
   const [selectedChat, setSelectedChat] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const token = localStorage.getItem("token");
