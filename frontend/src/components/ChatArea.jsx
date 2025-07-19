@@ -81,6 +81,12 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
           placeholder="type your message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              send();
+            }
+          }}
           className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button
