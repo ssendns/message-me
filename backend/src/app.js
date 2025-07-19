@@ -8,6 +8,7 @@ const app = express();
 
 const authRouter = require("./routes/authRouter");
 const userRouter = require("./routes/userRouter");
+const messageRouter = require("./routes/messageRouter");
 
 app.use(cors());
 app.use(express.json());
@@ -19,6 +20,7 @@ app.get("/test", async (req, res) => {
 });
 
 app.use("/profile", userRouter);
+app.use("/messages", messageRouter);
 app.use("/", authRouter);
 
 module.exports = app;
