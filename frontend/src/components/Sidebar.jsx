@@ -1,26 +1,10 @@
-import UserList from "./UserList";
-
-export default function Sidebar({
-  token,
-  activeUsername,
-  onSelect,
-  onLogout,
-  onEdit,
-  isOpen,
-  toggleSidebar,
-}) {
+export default function Sidebar({ onLogout, onEdit, isOpen }) {
   return (
     <aside
-      className={`bg-white shadow-md p-4 flex flex-col fixed top-0 left-0 h-full z-10 transition-transform duration-300 ${
+      className={`bg-white shadow-md p-4 flex flex-col fixed top-0 left-0 h-full z-30 transition-transform duration-300 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       } w-[300px]`}
     >
-      <button
-        onClick={toggleSidebar}
-        className="self-end text-gray-500 hover:text-gray-800 mb-4"
-      >
-        x
-      </button>
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-1 text-primary">hello,</h2>
         <p className="text-lg font-bold text-foreground">
@@ -42,12 +26,6 @@ export default function Sidebar({
           log out
         </button>
       </div>
-
-      <UserList
-        token={token}
-        activeUsername={activeUsername}
-        onSelect={onSelect}
-      />
     </aside>
   );
 }
