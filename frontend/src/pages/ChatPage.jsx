@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import socket from "../socket";
-import UserList from "../components/UserList";
 import ChatBox from "../components/ChatBox";
 import Sidebar from "../components/Sidebar";
 import { getUserByUsername, getMessagesWithUser } from "../services/api";
+import { Navigate, useNavigate } from "react-router-dom";
 
 export default function ChatPage() {
   const [toUsername, setToUsername] = useState("");
@@ -12,6 +12,7 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
   const userId = Number(localStorage.getItem("id"));
@@ -62,11 +63,11 @@ export default function ChatPage() {
 
   const handleLogout = () => {
     localStorage.clear();
-    window.location.href = "/log-in";
+    navigate("/log-in");
   };
 
   const handleEdit = () => {
-    alert("edit account not implemented yet 🙂");
+    navigate("/edit");
   };
 
   return (
