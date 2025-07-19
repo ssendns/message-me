@@ -21,6 +21,7 @@ export default function LogInPage() {
       const data = await res.json();
       localStorage.setItem("token", data.user.token);
       localStorage.setItem("username", data.user.username);
+      localStorage.setItem("id", data.user.id);
       navigate("/");
     } catch (err) {
       console.error("login failed:", err);
