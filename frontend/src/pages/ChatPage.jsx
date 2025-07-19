@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import socket from "../socket";
 import UserList from "../components/UserList";
+import ChatBox from "../components/ChatBox";
 import { getUserByUsername, getMessagesWithUser } from "../services/api";
 
 export default function ChatPage() {
@@ -69,24 +70,7 @@ export default function ChatPage() {
           onSelect={fetchMessagesByUsername}
         />
 
-        <div className="bg-white rounded-card shadow-card p-4 h-64 overflow-y-auto mb-4">
-          {messages.length === 0 ? (
-            <p className="text-sm text-muted">no messages yet</p>
-          ) : (
-            messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`text-sm my-2 ${
-                  msg.fromId === userId
-                    ? "text-right text-primary"
-                    : "text-left"
-                }`}
-              >
-                <span>{msg.content}</span>
-              </div>
-            ))
-          )}
-        </div>
+        <ChatBox messages={messages} currentUserId={userId} />
 
         <div className="flex gap-2">
           <input
