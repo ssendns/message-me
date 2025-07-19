@@ -1,5 +1,5 @@
 const prisma = require("../utils/db");
-const { createMessage } = require("../utils/createMessage");
+const { createMessage } = require("../utils/messageUtils");
 
 const sendMessage = async (req, res) => {
   const { toId, content } = req.body;
