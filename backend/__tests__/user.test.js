@@ -67,14 +67,6 @@ describe("user routes", () => {
     expect(res.body).toHaveProperty("error", "invalid or expired token");
   });
 
-  it("should delete user account with valid credentials", async () => {
-    const res = await request(app)
-      .delete("/profile")
-      .set("Authorization", `Bearer ${token}`);
-
-    expect(res.statusCode).toBe(204);
-  });
-
   it("should not delete user account with invalid credentials", async () => {
     const res = await request(app)
       .delete("/profile")
@@ -82,6 +74,30 @@ describe("user routes", () => {
 
     expect(res.statusCode).toBe(401);
     expect(res.body).toHaveProperty("error", "invalid or expired token");
+  });
+
+  it("returns user ID by username", async () => {
+    const res = await request(app).get("/profile/username/newUsername");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty("id");
+    expect(res.body).toHaveProperty("username", "newUsername");
+    expect(res.body).not.toHaveProperty("password");
+  });
+
+  it("returns 404 if user not found", async () => {
+    const res = await request(app).get("/profile/username/nonexistent_user");
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toHaveProperty("error", "user not found");
+  });
+
+  it("should delete user account with valid credentials", async () => {
+    const res = await request(app)
+      .delete("/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(204);
   });
 
   afterAll(async () => {

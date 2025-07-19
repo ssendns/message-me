@@ -43,4 +43,18 @@ const deleteProfile = async (req, res) => {
   res.status(204).send();
 };
 
-module.exports = { getProfile, editProfile, deleteProfile };
+const getUserId = async (req, res) => {
+  const { username } = req.params;
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true, username: true },
+  });
+
+  if (!user) {
+    return res.status(404).json({ error: "user not found" });
+  }
+
+  res.json(user);
+};
+
+module.exports = { getProfile, editProfile, deleteProfile, getUserId };
