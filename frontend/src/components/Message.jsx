@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Trash2, Copy } from "lucide-react";
-import socket from "../socket";
+import useSocket from "../hooks/useSocket";
 
 export default function Message({ message, currentUserId }) {
   const isOwn = message.fromId === currentUserId;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [shouldOpenUpwards, setShouldOpenUpwards] = useState(false);
   const messageRef = useRef(null);
+
+  const { socket, isReady } = useSocket();
 
   const time =
     message.createdAt &&
@@ -16,23 +17,12 @@ export default function Message({ message, currentUserId }) {
       minute: "2-digit",
     });
 
-  const handleDelete = async () => {
-    try {
-      console.log("enter");
-      const token = localStorage.getItem("token");
-      socket.emit("delete_message", {
-        id: message.id,
-        userId: currentUserId,
-      });
-    } catch (err) {
-      console.error("delete failed", err);
-    }
-  };
-
-  const handleContextMenu = (e) => {
-    e.preventDefault();
-    setMenuPosition({ x: e.pageX, y: e.pageY });
-    setMenuOpen(true);
+  const handleDelete = () => {
+    if (!isReady) return;
+    socket.emit("delete_message", {
+      id: message.id,
+      userId: currentUserId,
+    });
   };
 
   const handleClickOutside = (e) => {
@@ -85,8 +75,8 @@ export default function Message({ message, currentUserId }) {
         {menuOpen && (
           <ul
             className={`absolute z-50 w-40 bg-white border border-gray-200 rounded-lg shadow-xl text-sm overflow-hidden animate-fade-in
-    ${shouldOpenUpwards ? "bottom-full mb-1" : "top-full mt-1"} 
-    ${isOwn ? "right-0" : "left-0"}`}
+              ${shouldOpenUpwards ? "bottom-full mb-1" : "top-full mt-1"} 
+              ${isOwn ? "right-0" : "left-0"}`}
           >
             {isOwn && (
               <li
