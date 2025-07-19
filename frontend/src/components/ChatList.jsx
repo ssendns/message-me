@@ -1,35 +1,8 @@
-import { useEffect, useState } from "react";
-import { getAllUsers, getMessagesWithUser } from "../services/api";
+import useChatList from "../hooks/useChatList";
 
 export default function ChatList({ token, currentChat, onSelect }) {
-  const [chats, setChats] = useState([]);
-
-  useEffect(() => {
-    const fetchChats = async () => {
-      try {
-        const users = await getAllUsers(token);
-
-        const chatData = await Promise.all(
-          users.map(async (user) => {
-            const { messages } = await getMessagesWithUser(user.id, token);
-            const lastMsg = messages?.slice(-1)[0];
-            return {
-              id: user.id,
-              username: user.username,
-              lastMessage: lastMsg?.content || "",
-              time: lastMsg?.createdAt || null,
-            };
-          })
-        );
-
-        setChats(chatData);
-      } catch (err) {
-        console.error("failed to load chats", err);
-      }
-    };
-
-    fetchChats();
-  }, [token]);
+  const currentUserId = Number(localStorage.getItem("id"));
+  const { chats } = useChatList(token, currentUserId);
 
   return (
     <div className="space-y-1 px-2 pt-2 overflow-y-auto h-full">
