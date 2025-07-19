@@ -1,4 +1,5 @@
 const prisma = require("../utils/db");
+const { createMessage } = require("../utils/createMessage");
 
 const sendMessage = async (req, res) => {
   const { toId, content } = req.body;
@@ -9,14 +10,7 @@ const sendMessage = async (req, res) => {
   }
 
   try {
-    const message = await prisma.message.create({
-      data: {
-        fromId,
-        toId,
-        content,
-      },
-    });
-
+    const message = await createMessage(fromId, toId, content);
     res.status(201).json({ message });
   } catch (err) {
     console.error(err);
