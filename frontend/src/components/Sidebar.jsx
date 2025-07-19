@@ -1,4 +1,4 @@
-export default function Sidebar({ onLogout, onEdit, isOpen }) {
+export default function Sidebar({ username, onLogout, onEdit, isOpen }) {
   return (
     <aside
       className={`bg-white shadow-md p-4 flex flex-col fixed top-0 left-0 h-full z-30 transition-transform duration-300 ${
@@ -7,9 +7,7 @@ export default function Sidebar({ onLogout, onEdit, isOpen }) {
     >
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-1 text-primary">hello,</h2>
-        <p className="text-lg font-bold text-foreground">
-          {localStorage.getItem("username")}
-        </p>
+        <p className="text-lg font-bold text-foreground">{username}</p>
       </div>
 
       <div className="mb-6 flex flex-col gap-2">
