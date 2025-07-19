@@ -6,7 +6,7 @@ let token;
 
 describe("user routes", () => {
   beforeAll(async () => {
-    await prisma.user.deleteMany({ where: { username: "testuser" } });
+    await prisma.user.deleteMany();
 
     await request(app).post("/sign-up").send({
       username: "testuser",
@@ -98,6 +98,46 @@ describe("user routes", () => {
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.statusCode).toBe(204);
+  });
+
+  test("returns users excluding current user", async () => {
+    await request(app).post("/sign-up").send({
+      username: "user1",
+      password: "123",
+    });
+    const res1 = await request(app).post("/log-in").send({
+      username: "user1",
+      password: "123",
+    });
+
+    await request(app).post("/sign-up").send({
+      username: "user2",
+      password: "456",
+    });
+    const res2 = await request(app).post("/log-in").send({
+      username: "user2",
+      password: "456",
+    });
+
+    const user1 = res1.body.user;
+    const user2 = res2.body.user;
+    const token1 = user1.token;
+    const token2 = user2.token;
+    const res = await request(app)
+      .get("/profile/all")
+      .set("Authorization", `Bearer ${token1}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+
+    expect(res.body.length).toBe(1);
+    expect(res.body[0]).toHaveProperty("username", "user2");
+    expect(res.body[0]).toHaveProperty("id");
+  });
+
+  test("returns 401 if not authenticated", async () => {
+    const res = await request(app).get("/profile/all");
+    expect(res.statusCode).toBe(401);
   });
 
   afterAll(async () => {

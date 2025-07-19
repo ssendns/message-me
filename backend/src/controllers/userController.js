@@ -57,4 +57,24 @@ const getUserId = async (req, res) => {
   res.json(user);
 };
 
-module.exports = { getProfile, editProfile, deleteProfile, getUserId };
+const getAllUsers = async (req, res) => {
+  const userId = req.user.userId;
+  const users = await prisma.user.findMany({
+    where: {
+      id: { not: userId },
+    },
+    select: {
+      id: true,
+      username: true,
+    },
+  });
+
+  res.json(users);
+};
+module.exports = {
+  getProfile,
+  editProfile,
+  deleteProfile,
+  getUserId,
+  getAllUsers,
+};
