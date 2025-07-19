@@ -3,21 +3,23 @@ import ChatArea from "../components/ChatArea";
 import Sidebar from "../components/Sidebar";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import useSocket from "../hooks/useSocket";
 
 export default function MainPage() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
+  const currentUserId = Number(localStorage.getItem("id"));
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
-  const userId = Number(localStorage.getItem("id"));
-
-  const navigate = useNavigate();
-  const sidebarRef = useRef();
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar = () => setSidebarOpen(false);
+
+  const navigate = useNavigate();
+  const sidebarRef = useRef();
+  const { socket, isReady } = useSocket();
 
   const handleLogout = () => {
     localStorage.clear();
@@ -35,6 +37,13 @@ export default function MainPage() {
   const handleBack = () => {
     setSelectedChat(null);
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/log-in");
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -58,6 +67,27 @@ export default function MainPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    if (socket && isReady && currentUserId) {
+      socket.emit("join", currentUserId);
+      console.log("joined online room with id:", currentUserId);
+
+      return () => {
+        socket.emit("leave", currentUserId);
+      };
+    }
+  }, [socket, isReady, currentUserId]);
+
+  if (!isReady) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-muted text-lg animate-pulse">
+          connecting to socket…
+        </p>
+      </div>
+    );
+  }
+
   return (
     <main className="flex h-screen font-poppins bg-background text-foreground overflow-hidden">
       {sidebarOpen && (
@@ -66,6 +96,7 @@ export default function MainPage() {
 
       <div ref={sidebarRef}>
         <Sidebar
+          username={username}
           onLogout={handleLogout}
           onEdit={handleEdit}
           isOpen={sidebarOpen}
@@ -106,7 +137,7 @@ export default function MainPage() {
             <ChatArea
               toUsername={selectedChat.username}
               toId={selectedChat.id}
-              currentUserId={userId}
+              currentUserId={currentUserId}
               onBack={handleBack}
             />
           ) : (
