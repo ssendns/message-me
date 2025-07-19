@@ -24,25 +24,41 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   }, [toId, token]);
 
   useEffect(() => {
-    socket.connect();
+    if (!toId || !currentUserId) return;
+    console.log("JOINING", currentUserId, toId);
     socket.emit("join", currentUserId);
+    socket.emit("join_chat", toId.toString());
 
-    const handleReceive = (msg) => {
-      if (msg.from === toId || msg.to === toId) {
-        setMessages((prev) => [
-          ...prev,
-          { fromId: msg.from, content: msg.text },
-        ]);
+    const handleReceive = (message) => {
+      if (message.fromId === toId || message.toId === toId) {
+        const newMessage = {
+          ...message,
+          createdAt: message.createdAt || new Date().toISOString(),
+        };
+
+        setMessages((prev) => {
+          const updated = [...prev, newMessage];
+          return updated;
+        });
       }
     };
-
     socket.on("receive_message", handleReceive);
 
     return () => {
       socket.off("receive_message", handleReceive);
-      socket.disconnect();
+      socket.emit("leave_chat", toId.toString());
     };
   }, [currentUserId, toId]);
+
+  useEffect(() => {
+    console.log("setting up delete_message listener");
+    socket.on("delete_message", ({ messageId }) => {
+      console.log("deleting message", messageId);
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    });
+
+    return () => socket.off("delete_message");
+  }, []);
 
   const send = () => {
     if (!text.trim() || !toId) return;
@@ -52,8 +68,6 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
       to: toId,
       text,
     });
-
-    setMessages((prev) => [...prev, { fromId: currentUserId, content: text }]);
     setText("");
   };
 
