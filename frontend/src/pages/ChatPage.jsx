@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import socket from "../socket";
 
 export default function ChatPage() {
   const [toId, setToId] = useState("");
@@ -7,7 +7,7 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
-  const navigate = useNavigate();
+  const userId = Number(localStorage.getItem("id"));
 
   const fetchMessages = async () => {
     if (!toId) return;
@@ -21,24 +21,34 @@ export default function ChatPage() {
     setMessages(data.messages || []);
   };
 
-  const sendMessage = async () => {
+  const send = () => {
     if (!text.trim()) return;
-    await fetch("http://localhost:3000/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ toId: Number(toId), content: text }),
+
+    socket.emit("send_message", {
+      from: userId,
+      to: Number(toId),
+      text,
     });
 
+    setMessages((prev) => [...prev, { fromId: userId, content: text }]);
     setText("");
-    fetchMessages();
   };
 
   useEffect(() => {
-    if (!token) navigate("/log-in");
-  }, []);
+    socket.connect();
+
+    socket.emit("join", userId);
+
+    socket.on("receive_message", (msg) => {
+      console.log("new message from socket:", msg);
+      setMessages((prev) => [...prev, { fromId: msg.from, content: msg.text }]);
+    });
+
+    return () => {
+      socket.off("receive_message");
+      socket.disconnect();
+    };
+  }, [userId]);
 
   return (
     <main className="min-h-screen bg-background text-foreground font-poppins p-layout max-w-screen mx-auto">
@@ -71,7 +81,7 @@ export default function ChatPage() {
               <div
                 key={msg.id}
                 className={`text-sm my-2 ${
-                  msg.fromId === Number(localStorage.getItem("userId"))
+                  msg.fromId === Number(localStorage.getItem("id"))
                     ? "text-right text-primary"
                     : "text-left"
                 }`}
@@ -91,7 +101,7 @@ export default function ChatPage() {
             className="flex-1 border border-muted rounded px-4 py-2 focus:outline-none"
           />
           <button
-            onClick={sendMessage}
+            onClick={send}
             className="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90"
           >
             send
