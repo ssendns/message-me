@@ -9,6 +9,7 @@ export default function MainPage() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const currentUserId = Number(localStorage.getItem("id"));
   const token = localStorage.getItem("token");
@@ -109,8 +110,14 @@ export default function MainPage() {
             selectedChat && isMobile ? "hidden" : "block"
           }`}
         >
-          <div className="flex items-center justify-between px-6 py-6 border-b bg-white">
-            <h1 className="text-lg font-semibold text-primary">chats</h1>
+          <div className="flex items-center justify-between px-6 py-5 border-b bg-white">
+            <input
+              type="text"
+              placeholder="search..."
+              className="w-full mr-5 px-3 py-2 rounded-lg border text-sm outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             <button
               onClick={toggleSidebar}
               className="text-xl text-muted hover:text-primary"
@@ -124,6 +131,7 @@ export default function MainPage() {
               token={token}
               currentChat={selectedChat?.username}
               onSelect={handleChatSelect}
+              searchTerm={searchTerm}
             />
           </div>
         </div>
