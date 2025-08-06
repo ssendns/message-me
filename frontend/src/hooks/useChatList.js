@@ -2,10 +2,22 @@ import { useEffect, useState, useCallback } from "react";
 import { getAllUsers, getMessagesWithUser } from "../services/api";
 import useSocket from "../hooks/useSocket";
 
-export default function useChatList(token, currentUserId) {
+export default function useChatList(token, currentUserId, currentChat) {
   const [chats, setChats] = useState([]);
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!currentChat) return;
+
+    setChats((prev) =>
+      prev.map((chat) =>
+        String(chat.id) === String(currentChat.id)
+          ? { ...chat, hasUnread: false }
+          : chat
+      )
+    );
+  }, [currentChat]);
 
   useEffect(() => {
     if (!socket) return;
@@ -47,7 +59,9 @@ export default function useChatList(token, currentUserId) {
               id: user.id,
               username: user.username,
               lastMessage: lastMsg?.content || "",
+              lastMessageId: lastMsg?.id || null,
               time: lastMsg?.createdAt || null,
+              hasUnread: false,
             };
           })
       );
@@ -63,16 +77,21 @@ export default function useChatList(token, currentUserId) {
   }, [fetchChats]);
 
   useEffect(() => {
-    const handleReceive = ({ fromId, toId, content, createdAt }) => {
+    const handleReceive = ({ fromId, toId, content, createdAt, id }) => {
       if (fromId === currentUserId || toId === currentUserId) {
         setChats((prev) => {
           const otherUserId = fromId === currentUserId ? toId : fromId;
+          const isOwnMessage = fromId === currentUserId;
+          const isCurrentChatOpen =
+            String(otherUserId) === String(currentChat?.id);
           return prev.map((chat) =>
             String(chat.id) === String(otherUserId)
               ? {
                   ...chat,
                   lastMessage: content,
+                  lastMessageId: id,
                   time: createdAt || new Date().toISOString(),
+                  hasUnread: !isOwnMessage && !isCurrentChatOpen,
                 }
               : chat
           );
@@ -84,8 +103,23 @@ export default function useChatList(token, currentUserId) {
       fetchChats();
     };
 
-    const handleEdit = () => {
-      fetchChats();
+    const handleEdit = ({ fromId, toId, content, createdAt, id }) => {
+      const otherUserId = fromId === currentUserId ? toId : fromId;
+      const isOwnMessage = fromId === currentUserId;
+      const isCurrentChatOpen = String(otherUserId) === String(currentChat?.id);
+
+      setChats((prev) =>
+        prev.map((chat) => {
+          if (chat.lastMessageId !== id) return chat;
+
+          return {
+            ...chat,
+            lastMessage: content,
+            time: createdAt || new Date().toISOString(),
+            hasUnread: !isOwnMessage && !isCurrentChatOpen,
+          };
+        })
+      );
     };
 
     socket.on("receive_message", handleReceive);
@@ -95,9 +129,9 @@ export default function useChatList(token, currentUserId) {
     return () => {
       socket.off("receive_message", handleReceive);
       socket.off("delete_message", handleDelete);
-      socket.off("edit_message", handleEdit);
+      socket.off("receive_edited_message", handleEdit);
     };
-  }, [socket, currentUserId, fetchChats]);
+  }, [socket, currentUserId, fetchChats, currentChat?.id]);
 
   return { chats, onlineUserIds, refreshChats: fetchChats };
 }

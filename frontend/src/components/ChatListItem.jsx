@@ -12,25 +12,36 @@ export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
     >
       <AvatarBubble username={username} isOnline={isOnline} />
 
-      <div className="flex-1">
+      <div className="flex-1 relative">
         <div className="flex justify-between items-start">
-          <div className="font-medium text-base">{username}</div>
-          {time && (
-            <div className="text-xs text-muted mt-0.5">
-              {new Date(time).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+          <div>
+            <div className="font-medium text-base">{username}</div>
+            <div
+              className={`text-sm truncate ${
+                isActive ? "text-white/90" : "text-gray-500"
+              }`}
+            >
+              {lastMessage}
             </div>
-          )}
-        </div>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            {time && (
+              <div
+                className={`text-xs ${
+                  isActive ? "text-white/70" : "text-muted"
+                }`}
+              >
+                {new Date(time).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+            )}
 
-        <div
-          className={`text-sm truncate ${
-            isActive ? "text-white/90" : "text-gray-500"
-          }`}
-        >
-          {lastMessage}
+            {chat.hasUnread && (
+              <span className="w-3 h-3 bg-blue-500 rounded-full" />
+            )}
+          </div>
         </div>
       </div>
     </div>
