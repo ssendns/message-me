@@ -4,7 +4,32 @@ import useSocket from "../hooks/useSocket";
 
 export default function useChatList(token, currentUserId) {
   const [chats, setChats] = useState([]);
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
   const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.emit("get_online_users");
+
+    socket.on("online_users", (ids) => {
+      setOnlineUserIds(ids.map(String));
+    });
+
+    socket.on("user_online", (userId) => {
+      setOnlineUserIds((prev) => [...new Set([...prev, String(userId)])]);
+    });
+
+    socket.on("user_offline", (userId) => {
+      setOnlineUserIds((prev) => prev.filter((id) => id !== String(userId)));
+    });
+
+    return () => {
+      socket.off("online_users");
+      socket.off("user_online");
+      socket.off("user_offline");
+    };
+  }, [socket]);
 
   const fetchChats = useCallback(async () => {
     if (!token) return;
@@ -74,5 +99,5 @@ export default function useChatList(token, currentUserId) {
     };
   }, [socket, currentUserId, fetchChats]);
 
-  return { chats, refreshChats: fetchChats };
+  return { chats, onlineUserIds, refreshChats: fetchChats };
 }

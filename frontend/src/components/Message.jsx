@@ -103,7 +103,7 @@ export default function Message({ message, currentUserId }) {
               {message.content}
             </div>
             {time && (
-              <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] text-white opacity-70">
+              <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] opacity-70">
                 {message.edited && <span>edited</span>}
                 <span>{time}</span>
               </div>
