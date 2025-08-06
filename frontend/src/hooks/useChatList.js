@@ -99,8 +99,49 @@ export default function useChatList(token, currentUserId, currentChat) {
       }
     };
 
-    const handleDelete = () => {
-      fetchChats();
+    const handleDelete = async ({ messageId, chatId }) => {
+      const updated = await Promise.all(
+        chats.map(async (chat) => {
+          if (String(chat.id) !== String(chatId)) return chat;
+          if (chat.lastMessageId !== messageId) return chat;
+
+          try {
+            const { messages } = await getMessagesWithUser(chatId, token);
+            console.log("messages after deletion", messages);
+            const last = messages[messages.length - 1];
+
+            if (!last) {
+              console.log("oooo");
+              return {
+                ...chat,
+                lastMessage: "",
+                lastMessageId: null,
+                time: null,
+                hasUnread: false,
+              };
+            }
+
+            console.log("lalala");
+
+            const isOwn = last.fromId === currentUserId;
+            const isOpen = String(chat.id) === String(currentChat?.id);
+            const shouldMarkUnread = !isOwn && !isOpen;
+
+            return {
+              ...chat,
+              lastMessage: last.content,
+              lastMessageId: last.id,
+              time: last.createdAt,
+              hasUnread: shouldMarkUnread,
+            };
+          } catch (err) {
+            console.error("Error fetching messages on delete:", err);
+            return chat;
+          }
+        })
+      );
+
+      setChats(updated);
     };
 
     const handleEdit = ({ fromId, toId, content, createdAt, id }) => {
@@ -131,7 +172,7 @@ export default function useChatList(token, currentUserId, currentChat) {
       socket.off("delete_message", handleDelete);
       socket.off("receive_edited_message", handleEdit);
     };
-  }, [socket, currentUserId, fetchChats, currentChat?.id]);
+  }, [socket, currentUserId, fetchChats, currentChat?.id, chats, token]);
 
   return { chats, onlineUserIds, refreshChats: fetchChats };
 }

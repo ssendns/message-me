@@ -24,6 +24,8 @@ export default function Message({ message, currentUserId }) {
     socket.emit("delete_message", {
       id: message.id,
       userId: currentUserId,
+      toId: message.toId,
+      fromId: message.fromId,
     });
   };
 
