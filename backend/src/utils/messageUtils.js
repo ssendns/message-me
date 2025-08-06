@@ -16,27 +16,36 @@ async function createMessage(from, to, content) {
   });
 }
 
-const deleteMessage = async ({ id, userId }, socket, io) => {
-  if (!id || !userId) {
-    console.error("deleteMessage: id or userId missing");
+const deleteMessage = async ({ id }, socket, io) => {
+  if (!id) {
+    console.error("deleteMessage: id missing");
     return;
   }
 
   try {
     const message = await prisma.message.findUnique({ where: { id } });
 
-    if (!message || message.fromId !== userId) {
-      return;
-    }
+    if (!message) return;
 
-    const toId = message.toId;
-    const fromId = message.fromId;
+    const { fromId, toId } = message;
 
     await prisma.message.delete({ where: { id } });
 
-    io.to(fromId.toString()).emit("delete_message", { messageId: id });
-    io.to(toId.toString()).emit("delete_message", { messageId: id });
-    socket.emit("delete_message", { messageId: id });
+    const payloadForFrom = {
+      messageId: id,
+      chatId: toId,
+      userId: fromId,
+    };
+
+    const payloadForTo = {
+      messageId: id,
+      chatId: fromId,
+      userId: toId,
+    };
+
+    io.to(fromId.toString()).emit("delete_message", payloadForFrom);
+    io.to(toId.toString()).emit("delete_message", payloadForTo);
+    socket.emit("delete_message", payloadForFrom);
   } catch (err) {
     console.error("delete_message failed:", err);
   }
