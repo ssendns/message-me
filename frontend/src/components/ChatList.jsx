@@ -3,7 +3,11 @@ import ChatListItem from "./ChatListItem";
 
 export default function ChatList({ token, currentChat, onSelect, searchTerm }) {
   const currentUserId = Number(localStorage.getItem("id"));
-  const { chats, onlineUserIds } = useChatList(token, currentUserId);
+  const { chats, onlineUserIds } = useChatList(
+    token,
+    currentUserId,
+    currentChat
+  );
   let filteredChats;
 
   if (searchTerm.trim() === "") {
@@ -20,7 +24,7 @@ export default function ChatList({ token, currentChat, onSelect, searchTerm }) {
         <ChatListItem
           key={chat.id}
           chat={chat}
-          isSelected={chat.username === currentChat}
+          isActive={chat.username === currentChat?.username}
           isOnline={onlineUserIds.includes(String(chat.id))}
           onClick={() => onSelect(chat)}
         />

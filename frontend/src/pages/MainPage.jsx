@@ -129,7 +129,7 @@ export default function MainPage() {
           <div className="flex-1 overflow-y-auto px-2 py-2">
             <ChatList
               token={token}
-              currentChat={selectedChat?.username}
+              currentChat={selectedChat}
               onSelect={handleChatSelect}
               searchTerm={searchTerm}
             />
