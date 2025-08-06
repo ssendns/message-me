@@ -14,11 +14,15 @@ function setupSocket(server) {
     },
   });
 
+  const onlineUsers = new Set();
+
   io.on("connection", (socket) => {
     console.log("user connected:", socket.id);
 
     socket.on("join", (userId) => {
       socket.join(userId.toString());
+      onlineUsers.add(userId.toString());
+      io.emit("user_online", userId);
       console.log(`user ${userId} is online`);
     });
 
@@ -59,8 +63,14 @@ function setupSocket(server) {
       console.log(`user left chat room chat_${chatUserId}`);
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", (userId) => {
+      onlineUsers.delete(userId);
+      io.emit("user_offline", userId);
       console.log("user disconnected:", socket.id);
+    });
+
+    socket.on("get_online_users", () => {
+      socket.emit("online_users", Array.from(onlineUsers));
     });
   });
 }
