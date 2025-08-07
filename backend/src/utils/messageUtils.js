@@ -86,4 +86,22 @@ async function editMessage({ id, userId, newContent }, socket, io) {
   }
 }
 
-module.exports = { createMessage, deleteMessage, editMessage };
+const markMessagesAsRead = async (fromId, toId) => {
+  await prisma.message.updateMany({
+    where: {
+      fromId,
+      toId,
+      hasUnread: true,
+    },
+    data: {
+      hasUnread: false,
+    },
+  });
+};
+
+module.exports = {
+  createMessage,
+  deleteMessage,
+  editMessage,
+  markMessagesAsRead,
+};

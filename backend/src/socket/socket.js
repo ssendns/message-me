@@ -3,7 +3,10 @@ const {
   createMessage,
   deleteMessage,
   editMessage,
+  markMessagesAsRead,
 } = require("../utils/messageUtils");
+
+const prisma = require("../utils/db");
 
 function setupSocket(server) {
   const io = new Server(server, {
@@ -62,6 +65,24 @@ function setupSocket(server) {
     socket.on("leave_chat", (chatUserId) => {
       socket.leave(`chat_${chatUserId}`);
       console.log(`user left chat room chat_${chatUserId}`);
+    });
+
+    socket.on("read_messages", async ({ fromId, toId }) => {
+      try {
+        await prisma.message.updateMany({
+          where: {
+            fromId,
+            toId,
+            hasUnread: true,
+          },
+          data: {
+            hasUnread: false,
+          },
+        });
+        console.log(`marked messages from ${fromId} to ${toId} as read`);
+      } catch (err) {
+        console.error("failed to mark messages as read:", err);
+      }
     });
 
     socket.on("disconnect", () => {
