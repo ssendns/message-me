@@ -20,6 +20,7 @@ function setupSocket(server) {
     console.log("user connected:", socket.id);
 
     socket.on("join", (userId) => {
+      socket.data.userId = userId.toString();
       socket.join(userId.toString());
       onlineUsers.add(userId.toString());
       io.emit("user_online", userId);
@@ -63,10 +64,15 @@ function setupSocket(server) {
       console.log(`user left chat room chat_${chatUserId}`);
     });
 
-    socket.on("disconnect", (userId) => {
-      onlineUsers.delete(userId);
-      io.emit("user_offline", userId);
-      console.log("user disconnected:", socket.id);
+    socket.on("disconnect", () => {
+      const userId = socket.data.userId;
+      if (userId) {
+        onlineUsers.delete(userId);
+        io.emit("user_offline", userId);
+        console.log(`user ${userId} disconnected`);
+      } else {
+        console.log(`socket ${socket.id} disconnected without userId`);
+      }
     });
 
     socket.on("get_online_users", () => {
