@@ -42,7 +42,9 @@ export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
             )}
 
             {chat.hasUnread && (
-              <span className="w-3 h-3 bg-blue-500 rounded-full" />
+              <span className="ml-auto text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                {chat.unreadCount}
+              </span>
             )}
           </div>
         </div>
