@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import ChatBox from "./ChatBox";
 import useChatMessages from "../hooks/useChatMessages";
-import useChatList from "../hooks/useChatList";
 import useSocket from "../hooks/useSocket";
+import useSendMessage from "../hooks/useSendMessage";
 
 export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const [text, setText] = useState("");
   const { messages } = useChatMessages(currentUserId, toId);
   const { socket } = useSocket();
+  const { sendMessage } = useSendMessage(currentUserId);
 
   useEffect(() => {
     if (toId) {
@@ -15,16 +16,19 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
     }
   }, [toId, socket]);
 
-  const send = () => {
-    if (!text.trim() || !toId) return;
-
-    socket.emit("send_message", {
-      from: currentUserId,
-      to: toId,
+  const handleSend = () => {
+    sendMessage({
       text,
+      toId,
+      onSuccess: () => setText(""),
     });
-    setText("");
-    useChatList.refreshChats;
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   return (
@@ -51,17 +55,13 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
           placeholder="type your message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              send();
-            }
-          }}
+          onKeyDown={handleKeyDown}
           className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button
-          onClick={send}
-          className="bg-primary text-white px-5 py-2 rounded-full hover:bg-opacity-90 transition-all"
+          onClick={handleSend}
+          disabled={!text.trim()}
+          className="bg-primary text-white px-5 py-2 rounded-full hover:bg-opacity-90 transition-all disabled:opacity-50"
         >
           send
         </button>
