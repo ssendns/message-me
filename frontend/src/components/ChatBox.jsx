@@ -12,32 +12,36 @@ export default function ChatBox({ messages, currentUserId }) {
     }
   }, [messages]);
 
-  let lastDateLabel = null;
+  const renderMessages = (messages) => {
+    if (messages.length === 0) {
+      return <p className="text-sm text-muted">no messages yet</p>;
+    }
+
+    let lastDateLabel = null;
+
+    return messages.map((message) => {
+      const dateLabel = message.createdAt
+        ? formatDate(message.createdAt)
+        : null;
+
+      const showDate = dateLabel && dateLabel !== lastDateLabel;
+
+      if (showDate) {
+        lastDateLabel = dateLabel;
+      }
+
+      return (
+        <div key={message.id}>
+          {showDate && <DateLabel date={dateLabel} />}
+          <Message message={message} currentUserId={currentUserId} />
+        </div>
+      );
+    });
+  };
 
   return (
     <div ref={containerRef} className="flex-1 h-full overflow-y-auto">
-      {messages.length === 0 ? (
-        <p className="text-sm text-muted">no messages yet</p>
-      ) : (
-        messages.map((message) => {
-          const dateLabel = message.createdAt
-            ? formatDate(message.createdAt)
-            : null;
-
-          const showDate = dateLabel && dateLabel !== lastDateLabel;
-
-          if (showDate) {
-            lastDateLabel = dateLabel;
-          }
-
-          return (
-            <div key={message.id}>
-              {showDate && <DateLabel date={dateLabel} />}
-              <Message message={message} currentUserId={currentUserId} />
-            </div>
-          );
-        })
-      )}
+      {renderMessages(messages)}
     </div>
   );
 }
