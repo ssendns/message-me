@@ -10,6 +10,7 @@ export default function MainPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const currentUserId = Number(localStorage.getItem("id"));
   const token = localStorage.getItem("token");
@@ -24,6 +25,7 @@ export default function MainPage() {
 
   const handleLogout = () => {
     localStorage.clear();
+    socket.disconnect();
     navigate("/log-in");
   };
 
@@ -37,6 +39,12 @@ export default function MainPage() {
 
   const handleBack = () => {
     setSelectedChat(null);
+  };
+
+  const handleWelcomeConfirm = () => {
+    localStorage.setItem("alreadyVisited", "true");
+    setShowWelcome(false);
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -69,6 +77,13 @@ export default function MainPage() {
   }, [sidebarOpen]);
 
   useEffect(() => {
+    const alreadyVisited = localStorage.getItem("alreadyVisited");
+    if (!alreadyVisited) {
+      setShowWelcome(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (socket && isReady && currentUserId) {
       socket.emit("join", currentUserId);
       console.log("joined online room with id:", currentUserId);
@@ -90,73 +105,91 @@ export default function MainPage() {
   }
 
   return (
-    <main className="flex h-screen font-poppins bg-background text-foreground overflow-hidden">
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-20" />
-      )}
-
-      <div ref={sidebarRef}>
-        <Sidebar
-          username={username}
-          onLogout={handleLogout}
-          onEdit={handleEdit}
-          isOpen={sidebarOpen}
-        />
-      </div>
-
-      <div className="flex flex-1">
-        <div
-          className={`w-full sm:w-[500px] border-r border-muted bg-white relative ${
-            selectedChat && isMobile ? "hidden" : "block"
-          }`}
-        >
-          <div className="flex items-center justify-between px-6 py-5 border-b bg-white">
-            <input
-              type="text"
-              placeholder="search..."
-              className="w-full mr-5 px-3 py-2 rounded-lg border text-sm outline-none"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+    <>
+      {showWelcome && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-xl p-6 shadow-xl max-w-sm text-center space-y-4">
+            <h2 className="text-xl font-semibold text-primary">welcome!</h2>
+            <p className="text-sm text-muted">
+              hi, {username || "пользователь"}! glad to see you
+            </p>
             <button
-              onClick={toggleSidebar}
-              className="text-xl text-muted hover:text-primary"
+              onClick={handleWelcomeConfirm}
+              className="px-4 py-2 bg-primary text-white rounded hover:bg-opacity-90 transition"
             >
-              ☰
+              continue
             </button>
           </div>
+        </div>
+      )}
+      <main className="flex h-screen font-poppins bg-background text-foreground overflow-hidden">
+        {sidebarOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 z-20" />
+        )}
 
-          <div className="flex-1 overflow-y-auto px-2 py-2">
-            <ChatList
-              token={token}
-              currentChat={selectedChat}
-              onSelect={handleChatSelect}
-              searchTerm={searchTerm}
-            />
-          </div>
+        <div ref={sidebarRef}>
+          <Sidebar
+            username={username}
+            onLogout={handleLogout}
+            onEdit={handleEdit}
+            isOpen={sidebarOpen}
+          />
         </div>
 
-        <section
-          className={`flex-1 flex flex-col bg-gray-50 ${
-            !selectedChat && isMobile ? "hidden" : "flex"
-          }`}
-        >
-          {selectedChat ? (
-            <ChatArea
-              toUsername={selectedChat.username}
-              toId={selectedChat.id}
-              currentUserId={currentUserId}
-              onBack={handleBack}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-muted">
-              <p className="text-lg font-medium">
-                select a chat to start messaging
-              </p>
+        <div className="flex flex-1">
+          <div
+            className={`w-full sm:w-[500px] border-r border-muted bg-white relative ${
+              selectedChat && isMobile ? "hidden" : "block"
+            }`}
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b bg-white">
+              <input
+                type="text"
+                placeholder="search..."
+                className="w-full mr-5 px-3 py-2 rounded-lg border text-sm outline-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <button
+                onClick={toggleSidebar}
+                className="text-xl text-muted hover:text-primary"
+              >
+                ☰
+              </button>
             </div>
-          )}
-        </section>
-      </div>
-    </main>
+
+            <div className="flex-1 overflow-y-auto px-2 py-2">
+              <ChatList
+                token={token}
+                currentChat={selectedChat}
+                onSelect={handleChatSelect}
+                searchTerm={searchTerm}
+              />
+            </div>
+          </div>
+
+          <section
+            className={`flex-1 flex flex-col bg-gray-50 ${
+              !selectedChat && isMobile ? "hidden" : "flex"
+            }`}
+          >
+            {selectedChat ? (
+              <ChatArea
+                toUsername={selectedChat.username}
+                toId={selectedChat.id}
+                currentUserId={currentUserId}
+                onBack={handleBack}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted">
+                <p className="text-lg font-medium">
+                  select a chat to start messaging
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+    </>
   );
 }
