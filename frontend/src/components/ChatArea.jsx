@@ -11,10 +11,10 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const { sendMessage } = useSendMessage(currentUserId);
 
   useEffect(() => {
-    if (toId) {
-      socket.emit("join_chat", toId.toString());
-    }
-  }, [toId, socket]);
+    if (!toId) return;
+    socket.emit("join_chat", toId.toString());
+    socket.emit("read_messages", { fromId: toId, toId: currentUserId });
+  }, [toId, socket, currentUserId]);
 
   const handleSend = () => {
     sendMessage({
