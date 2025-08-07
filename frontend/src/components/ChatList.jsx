@@ -8,15 +8,11 @@ export default function ChatList({ token, currentChat, onSelect, searchTerm }) {
     currentUserId,
     currentChat
   );
-  let filteredChats;
-
-  if (searchTerm.trim() === "") {
-    filteredChats = chats.filter((chat) => chat.lastMessage != "");
-  } else {
-    filteredChats = chats.filter((chat) =>
-      chat.username.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }
+  const search = searchTerm.toLowerCase();
+  const filteredChats =
+    search.trim() === ""
+      ? chats.filter((chat) => chat.lastMessage !== "")
+      : chats.filter((chat) => chat.username.toLowerCase().includes(search));
 
   return (
     <div className="space-y-1 px-2 pt-2 overflow-y-auto h-full">
@@ -24,7 +20,7 @@ export default function ChatList({ token, currentChat, onSelect, searchTerm }) {
         <ChatListItem
           key={chat.id}
           chat={chat}
-          isActive={chat.username === currentChat?.username}
+          isActive={chat.id === currentChat?.id}
           isOnline={onlineUserIds.includes(String(chat.id))}
           onClick={() => onSelect(chat)}
         />
