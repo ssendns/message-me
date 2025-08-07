@@ -13,7 +13,7 @@ export default function useChatList(token, currentUserId, currentChat) {
     setChats((prev) =>
       prev.map((chat) =>
         String(chat.id) === String(currentChat.id)
-          ? { ...chat, hasUnread: false }
+          ? { ...chat, hasUnread: false, unreadCount: 0 }
           : chat
       )
     );
@@ -53,7 +53,10 @@ export default function useChatList(token, currentUserId, currentChat) {
         users
           .filter((user) => user.id !== currentUserId)
           .map(async (user) => {
-            const { messages } = await getMessagesWithUser(user.id, token);
+            const { messages, unreadCount } = await getMessagesWithUser(
+              user.id,
+              token
+            );
             const lastMsg = messages?.slice(-1)[0];
             return {
               id: user.id,
@@ -61,12 +64,19 @@ export default function useChatList(token, currentUserId, currentChat) {
               lastMessage: lastMsg?.content || "",
               lastMessageId: lastMsg?.id || null,
               time: lastMsg?.createdAt || null,
-              hasUnread: false,
+              hasUnread: unreadCount > 0,
+              unreadCount,
             };
           })
       );
 
-      setChats(chatData);
+      const sortedChats = [...chatData].sort((a, b) => {
+        const aTime = new Date(a.time || 0);
+        const bTime = new Date(b.time || 0);
+        return bTime - aTime;
+      });
+
+      setChats(sortedChats);
     } catch (err) {
       console.error("failed to load chats", err);
     }
@@ -92,6 +102,9 @@ export default function useChatList(token, currentUserId, currentChat) {
                   lastMessageId: id,
                   time: createdAt || new Date().toISOString(),
                   hasUnread: !isOwnMessage && !isCurrentChatOpen,
+                  unreadCount: isOwnMessage
+                    ? chat.unreadCount || 0
+                    : (chat.unreadCount || 0) + 1,
                 }
               : chat
           );
