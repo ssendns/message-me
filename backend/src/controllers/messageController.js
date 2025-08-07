@@ -33,7 +33,15 @@ const getMessagesWithUser = async (req, res) => {
       orderBy: { createdAt: "asc" },
     });
 
-    res.json({ messages });
+    const unreadCount = await prisma.message.count({
+      where: {
+        fromId: toId,
+        toId: myId,
+        hasUnread: true,
+      },
+    });
+
+    res.json({ messages, unreadCount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
