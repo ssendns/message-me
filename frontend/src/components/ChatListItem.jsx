@@ -3,10 +3,25 @@ import AvatarBubble from "./AvatarBubble";
 export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
   const { username, lastMessage, time } = chat;
   const formattedTime = time
-    ? new Date(time).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+    ? (() => {
+        const messageDate = new Date(time);
+        const now = new Date();
+
+        const isToday =
+          messageDate.getDate() === now.getDate() &&
+          messageDate.getMonth() === now.getMonth() &&
+          messageDate.getFullYear() === now.getFullYear();
+
+        return isToday
+          ? messageDate.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : messageDate.toLocaleDateString([], {
+              day: "2-digit",
+              month: "2-digit",
+            });
+      })()
     : "";
 
   return (
