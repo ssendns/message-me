@@ -1,5 +1,8 @@
 export default function AvatarBubble({ username, isOnline }) {
-  const initial = username?.charAt(0)?.toUpperCase() || "?";
+  const initial =
+    typeof username === "string" && username.length > 0
+      ? username.charAt(0).toUpperCase()
+      : "?";
 
   return (
     <div className="relative">
