@@ -2,6 +2,12 @@ import AvatarBubble from "./AvatarBubble";
 
 export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
   const { username, lastMessage, time } = chat;
+  const formattedTime = time
+    ? new Date(time).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 
   return (
     <div
@@ -17,7 +23,7 @@ export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
           <div>
             <div className="font-medium text-base">{username}</div>
             <div
-              className={`text-sm truncate ${
+              className={`text-sm max-w-[300px] overflow-hidden whitespace-nowrap text-ellipsis ${
                 isActive ? "text-white/90" : "text-gray-500"
               }`}
             >
@@ -25,16 +31,13 @@ export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
             </div>
           </div>
           <div className="flex flex-col items-center gap-1">
-            {time && (
+            {formattedTime && (
               <div
                 className={`text-xs ${
                   isActive ? "text-white/70" : "text-muted"
                 }`}
               >
-                {new Date(time).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formattedTime}
               </div>
             )}
 
