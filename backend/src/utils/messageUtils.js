@@ -1,6 +1,9 @@
 const prisma = require("./db");
 
-async function createMessage(from, to, content) {
+async function createMessage(from, to, text, imageUrl) {
+  if ((!text || !text.trim()) && !imageUrl) {
+    throw new Error("message must have text or image");
+  }
   const userExists = await prisma.user.findUnique({ where: { id: from } });
   const receiverExists = await prisma.user.findUnique({ where: { id: to } });
 
@@ -11,7 +14,8 @@ async function createMessage(from, to, content) {
     data: {
       fromId: from,
       toId: to,
-      content,
+      content: text?.trim() || "",
+      imageUrl: imageUrl || null,
     },
   });
 }
@@ -51,7 +55,10 @@ const deleteMessage = async ({ id }, socket, io) => {
   }
 };
 
-async function editMessage({ id, userId, newContent }, socket, io) {
+async function editMessage({ id, userId, newText, newImageUrl }, socket, io) {
+  if ((!text || !text.trim()) && !imageUrl) {
+    throw new Error("message must have text or image");
+  }
   try {
     const existing = await prisma.message.findUnique({ where: { id } });
 
@@ -63,7 +70,8 @@ async function editMessage({ id, userId, newContent }, socket, io) {
     const updated = await prisma.message.update({
       where: { id },
       data: {
-        content: newContent,
+        content: newText?.trim() || "",
+        imageUrl: newImageUrl || null,
         edited: true,
       },
     });
@@ -73,7 +81,8 @@ async function editMessage({ id, userId, newContent }, socket, io) {
       fromId: updated.fromId,
       toId: updated.toId,
       content: updated.content,
-      createdAt: updated.createdAt,
+      content: updated.content,
+      imageUrl: updated.imageUrl,
       updatedAt: updated.updatedAt,
       edit: updated.edited,
     };

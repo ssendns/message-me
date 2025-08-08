@@ -35,15 +35,16 @@ function setupSocket(server) {
       console.log(`user joined chat room with user ${chatUserId}`);
     });
 
-    socket.on("send_message", async ({ from, to, text }) => {
+    socket.on("send_message", async ({ from, to, text, imageUrl }) => {
       console.log(`${from} → ${to}: ${text}`);
       try {
-        const message = await createMessage(from, to, text);
+        const message = await createMessage(from, to, text, imageUrl);
         const fullMessage = {
           id: message.id,
           fromId: message.fromId,
           toId: message.toId,
           content: message.content,
+          imageUrl: message.imageUrl,
           createdAt: message.createdAt,
         };
 
