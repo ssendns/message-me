@@ -24,22 +24,20 @@ export default function useChatList(token, currentUserId, currentChat) {
 
     socket.emit("get_online_users");
 
-    socket.on("online_users", (ids) => {
-      setOnlineUserIds(ids.map(String));
-    });
-
-    socket.on("user_online", (userId) => {
+    const handleOnlineUsers = (ids) => setOnlineUserIds(ids.map(String));
+    const handleUserOnline = (userId) =>
       setOnlineUserIds((prev) => [...new Set([...prev, String(userId)])]);
-    });
-
-    socket.on("user_offline", (userId) => {
+    const handleUserOffline = (userId) =>
       setOnlineUserIds((prev) => prev.filter((id) => id !== String(userId)));
-    });
+
+    socket.on("online_users", handleOnlineUsers);
+    socket.on("user_online", handleUserOnline);
+    socket.on("user_offline", handleUserOffline);
 
     return () => {
-      socket.off("online_users");
-      socket.off("user_online");
-      socket.off("user_offline");
+      socket.off("online_users", handleOnlineUsers);
+      socket.off("user_online", handleUserOnline);
+      socket.off("user_offline", handleUserOffline);
     };
   }, [socket]);
 
@@ -57,28 +55,25 @@ export default function useChatList(token, currentUserId, currentChat) {
               user.id,
               token
             );
-            const lastMsg = messages?.slice(-1)[0];
+            const lastMessage = messages?.at(-1);
+
             return {
               id: user.id,
               username: user.username,
-              lastMessage: lastMsg?.content || "",
-              lastMessageId: lastMsg?.id || null,
-              time: lastMsg?.createdAt || null,
+              lastMessage: lastMessage?.content || "",
+              lastMessageId: lastMessage?.id || null,
+              time: lastMessage?.createdAt || null,
               hasUnread: unreadCount > 0,
               unreadCount,
             };
           })
       );
 
-      const sortedChats = [...chatData].sort((a, b) => {
-        const aTime = new Date(a.time || 0);
-        const bTime = new Date(b.time || 0);
-        return bTime - aTime;
-      });
-
-      setChats(sortedChats);
+      setChats(
+        chatData.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
+      );
     } catch (err) {
-      console.error("failed to load chats", err);
+      console.error("failed to load chats:", err);
     }
   }, [token, currentUserId]);
 
@@ -87,44 +82,46 @@ export default function useChatList(token, currentUserId, currentChat) {
   }, [fetchChats]);
 
   useEffect(() => {
+    if (!socket) return;
+
     const handleReceive = ({ fromId, toId, content, createdAt, id }) => {
-      if (fromId === currentUserId || toId === currentUserId) {
-        setChats((prev) => {
-          const otherUserId = fromId === currentUserId ? toId : fromId;
-          const isOwnMessage = fromId === currentUserId;
-          const isCurrentChatOpen =
-            String(otherUserId) === String(currentChat?.id);
-          return prev.map((chat) =>
-            String(chat.id) === String(otherUserId)
-              ? {
-                  ...chat,
-                  lastMessage: content,
-                  lastMessageId: id,
-                  time: createdAt || new Date().toISOString(),
-                  hasUnread: !isOwnMessage && !isCurrentChatOpen,
-                  unreadCount: isOwnMessage
-                    ? chat.unreadCount || 0
-                    : (chat.unreadCount || 0) + 1,
-                }
-              : chat
-          );
-        });
-      }
+      const otherUserId = fromId === currentUserId ? toId : fromId;
+      const isOwn = fromId === currentUserId;
+      const isOpen = String(otherUserId) === String(currentChat?.id);
+
+      setChats((prev) => {
+        const updated = prev.map((chat) =>
+          String(chat.id) === String(otherUserId)
+            ? {
+                ...chat,
+                lastMessage: content,
+                lastMessageId: id,
+                time: createdAt || new Date().toISOString(),
+                hasUnread: !isOwn && !isOpen,
+                unreadCount: isOwn
+                  ? chat.unreadCount || 0
+                  : (chat.unreadCount || 0) + 1,
+              }
+            : chat
+        );
+
+        return updated.sort(
+          (a, b) => new Date(b.time || 0) - new Date(a.time || 0)
+        );
+      });
     };
 
     const handleDelete = async ({ messageId, chatId }) => {
-      const updated = await Promise.all(
+      const updatedChats = await Promise.all(
         chats.map(async (chat) => {
           if (String(chat.id) !== String(chatId)) return chat;
           if (chat.lastMessageId !== messageId) return chat;
 
           try {
             const { messages } = await getMessagesWithUser(chatId, token);
-            console.log("messages after deletion", messages);
-            const last = messages[messages.length - 1];
+            const last = messages.at(-1);
 
             if (!last) {
-              console.log("oooo");
               return {
                 ...chat,
                 lastMessage: "",
@@ -133,8 +130,6 @@ export default function useChatList(token, currentUserId, currentChat) {
                 hasUnread: false,
               };
             }
-
-            console.log("lalala");
 
             const isOwn = last.fromId === currentUserId;
             const isOpen = String(chat.id) === String(currentChat?.id);
@@ -148,31 +143,35 @@ export default function useChatList(token, currentUserId, currentChat) {
               hasUnread: shouldMarkUnread,
             };
           } catch (err) {
-            console.error("Error fetching messages on delete:", err);
+            console.error("error fetching messages on delete:", err);
             return chat;
           }
         })
       );
 
-      setChats(updated);
+      setChats(
+        updatedChats.sort(
+          (a, b) => new Date(b.time || 0) - new Date(a.time || 0)
+        )
+      );
     };
 
     const handleEdit = ({ fromId, toId, content, createdAt, id }) => {
       const otherUserId = fromId === currentUserId ? toId : fromId;
-      const isOwnMessage = fromId === currentUserId;
-      const isCurrentChatOpen = String(otherUserId) === String(currentChat?.id);
+      const isOwn = fromId === currentUserId;
+      const isOpen = String(otherUserId) === String(currentChat?.id);
 
       setChats((prev) =>
-        prev.map((chat) => {
-          if (chat.lastMessageId !== id) return chat;
-
-          return {
-            ...chat,
-            lastMessage: content,
-            time: createdAt || new Date().toISOString(),
-            hasUnread: !isOwnMessage && !isCurrentChatOpen,
-          };
-        })
+        prev.map((chat) =>
+          chat.lastMessageId === id
+            ? {
+                ...chat,
+                lastMessage: content,
+                time: createdAt || new Date().toISOString(),
+                hasUnread: !isOwn && !isOpen,
+              }
+            : chat
+        )
       );
     };
 
@@ -185,7 +184,11 @@ export default function useChatList(token, currentUserId, currentChat) {
       socket.off("delete_message", handleDelete);
       socket.off("receive_edited_message", handleEdit);
     };
-  }, [socket, currentUserId, fetchChats, currentChat?.id, chats, token]);
+  }, [socket, chats, token, currentChat?.id, currentUserId]);
 
-  return { chats, onlineUserIds, refreshChats: fetchChats };
+  return {
+    chats,
+    onlineUserIds,
+    refreshChats: fetchChats,
+  };
 }
