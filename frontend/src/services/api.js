@@ -1,50 +1,54 @@
 const BASE_URL = "http://localhost:3000";
 
-export async function getUserByUsername(username) {
-  const res = await fetch(`${BASE_URL}/profile/username/${username}`);
-  if (!res.ok) throw new Error("user not found");
-  return await res.json();
-}
+async function request(endpoint, { method = "GET", token, body } = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
 
-export async function getMessagesWithUser(toId, token) {
-  const res = await fetch(`${BASE_URL}/messages/${toId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error("failed to fetch messages");
-  return await res.json();
-}
-
-export async function getAllUsers(token) {
-  const res = await fetch(`${BASE_URL}/profile/all`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error("failed to fetch users");
-  return await res.json();
-}
-
-export async function updateUser({ newUsername, newPassword, token }) {
-  const res = await fetch("http://localhost:3000/profile/edit", {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ newUsername, newPassword }),
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "failed to update user");
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || "request failed");
   }
 
-  return res.json();
+  return await res.json().catch(() => ({}));
+}
+
+export function getUserByUsername(username) {
+  return request(`/profile/username/${username}`);
+}
+
+export function getAllUsers(token) {
+  return request("/profile/all", { token });
+}
+
+export function getMessagesWithUser(toId, token) {
+  return request(`/messages/${toId}`, { token });
+}
+
+export function updateUser({ newUsername, newPassword, token }) {
+  return request("/profile/edit", {
+    method: "PATCH",
+    token,
+    body: { newUsername, newPassword },
+  });
 }
 
 export async function deleteMessage(id, token) {
-  const res = await fetch(`http://localhost:3000/messages/${id}`, {
+  await request(`/messages/${id}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
+    token,
   });
+}
 
-  if (!res.ok) throw new Error("failed to delete message");
+export function createMessage({ toId, text, token }) {
+  return request("/messages", {
+    method: "POST",
+    token,
+    body: { toId, text },
+  });
 }
