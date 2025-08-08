@@ -1,14 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ChatBox from "./ChatBox";
 import useChatMessages from "../hooks/useChatMessages";
 import useSocket from "../hooks/useSocket";
 import useSendMessage from "../hooks/useSendMessage";
+import useUploadImage from "../hooks/useUploadImage";
+import { Paperclip } from "lucide-react";
 
 export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const [messageText, setMessageText] = useState("");
+  const fileInputRef = useRef(null);
+
   const { messages } = useChatMessages(currentUserId, toId);
   const { socket } = useSocket();
   const { sendMessage } = useSendMessage(currentUserId);
+  const { uploadImage, loading, error } = useUploadImage();
 
   useEffect(() => {
     if (!toId) return;
@@ -33,6 +38,24 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
     }
   };
 
+  const handlePickFile = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const url = await uploadImage(file);
+    e.target.value = "";
+
+    if (!url) return;
+
+    sendMessage({
+      text: url,
+      toId,
+      onSuccess: () => {},
+    });
+  };
+
   return (
     <div className="flex flex-col flex-1 h-full">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white shadow-sm">
@@ -53,8 +76,25 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
 
       <div className="px-6 py-4 border-t border-gray-200 bg-white flex gap-2">
         <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        <button
+          onClick={handlePickFile}
+          disabled={loading}
+          title="attach image"
+          className="p-2 rounded-full border hover:bg-gray-100 disabled:opacity-50"
+        >
+          <Paperclip size={18} />
+        </button>
+
+        <input
           type="text"
-          placeholder="Type your message..."
+          placeholder="type your message..."
           value={messageText}
           onChange={(e) => setMessageText(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -68,6 +108,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
           send
         </button>
       </div>
+      {error && <div className="px-6 pb-3 text-xs text-red-600">{error}</div>}
     </div>
   );
 }

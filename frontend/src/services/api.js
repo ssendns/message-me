@@ -52,3 +52,17 @@ export function createMessage({ toId, text, token }) {
     body: { toId, text },
   });
 }
+
+export async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("http://localhost:3000/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("upload failed");
+
+  return await res.json();
+}
