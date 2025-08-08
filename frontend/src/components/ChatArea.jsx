@@ -5,7 +5,7 @@ import useSocket from "../hooks/useSocket";
 import useSendMessage from "../hooks/useSendMessage";
 
 export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
-  const [text, setText] = useState("");
+  const [messageText, setMessageText] = useState("");
   const { messages } = useChatMessages(currentUserId, toId);
   const { socket } = useSocket();
   const { sendMessage } = useSendMessage(currentUserId);
@@ -17,10 +17,12 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   }, [toId, socket, currentUserId]);
 
   const handleSend = () => {
+    if (!messageText.trim()) return;
+
     sendMessage({
-      text,
+      text: messageText,
       toId,
-      onSuccess: () => setText(""),
+      onSuccess: () => setMessageText(""),
     });
   };
 
@@ -52,15 +54,15 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
       <div className="px-6 py-4 border-t border-gray-200 bg-white flex gap-2">
         <input
           type="text"
-          placeholder="type your message..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+          placeholder="Type your message..."
+          value={messageText}
+          onChange={(e) => setMessageText(e.target.value)}
           onKeyDown={handleKeyDown}
           className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button
           onClick={handleSend}
-          disabled={!text.trim()}
+          disabled={!messageText.trim()}
           className="bg-primary text-white px-5 py-2 rounded-full hover:bg-opacity-90 transition-all disabled:opacity-50"
         >
           send

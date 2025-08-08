@@ -1,8 +1,13 @@
 import useChatList from "../hooks/useChatList";
 import ChatListItem from "./ChatListItem";
 
-export default function ChatList({ token, currentChat, onSelect, searchTerm }) {
-  const currentUserId = Number(localStorage.getItem("id"));
+export default function ChatList({
+  token,
+  currentUserId,
+  currentChat,
+  onSelect,
+  searchTerm,
+}) {
   const { chats, onlineUserIds } = useChatList(
     token,
     currentUserId,
