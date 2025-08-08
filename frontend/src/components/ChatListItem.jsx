@@ -1,7 +1,8 @@
 import AvatarBubble from "./AvatarBubble";
+import { Image as ImageIcon } from "lucide-react";
 
 export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
-  const { username, lastMessage, time } = chat;
+  const { username, lastMessageContent, lastMessageImageUrl, time } = chat;
   const formattedTime = time
     ? (() => {
         const messageDate = new Date(time);
@@ -24,6 +25,12 @@ export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
       })()
     : "";
 
+  const preview = lastMessageContent?.trim()
+    ? lastMessageContent
+    : lastMessageImageUrl
+    ? "[image]"
+    : "";
+
   return (
     <div
       onClick={onClick}
@@ -42,7 +49,20 @@ export default function ChatListItem({ chat, isActive, isOnline, onClick }) {
                 isActive ? "text-white/90" : "text-gray-500"
               }`}
             >
-              {lastMessage}
+              <div
+                className={`text-sm max-w-[300px] overflow-hidden whitespace-nowrap text-ellipsis flex items-center gap-1 ${
+                  isActive ? "text-white/90" : "text-gray-500"
+                }`}
+                title={preview}
+              >
+                {lastMessageImageUrl && (
+                  <ImageIcon
+                    size={14}
+                    className={isActive ? "opacity-90" : "opacity-70"}
+                  />
+                )}
+                {preview || " "}
+              </div>
             </div>
           </div>
           <div className="flex flex-col items-center gap-1">
