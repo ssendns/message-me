@@ -22,7 +22,8 @@ model Message {
   fromId    Int?
   to        User?    @relation("MessagesReceived", fields: [toId], references: [id], onDelete: SetNull)
   toId      Int?
-  content   String
+  content   String    @default("")
+  imageUrl  String? 
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
   edited Boolean @default(false)
