@@ -5,10 +5,13 @@ import useSocket from "../hooks/useSocket";
 import useSendMessage from "../hooks/useSendMessage";
 import useUploadImage from "../hooks/useUploadImage";
 import { Paperclip } from "lucide-react";
+import ImageSendModal from "./ImageSendModal";
 
 export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const [messageText, setMessageText] = useState("");
-  const [pending, setPending] = useState([]);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickedFile, setPickedFile] = useState(null);
   const fileInputRef = useRef(null);
 
   const { messages } = useChatMessages(currentUserId, toId);
@@ -28,8 +31,9 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
     sendMessage({
       text: messageText,
       toId,
-      onSuccess: () => setMessageText(""),
     });
+
+    setMessageText("");
   };
 
   const handleKeyDown = (e) => {
@@ -41,38 +45,35 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
 
   const handlePickFile = () => fileInputRef.current?.click();
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPickedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setPickerOpen(true);
     e.target.value = "";
+  };
 
-    const tempId = `temp-${Date.now()}`;
-    const previewUrl = URL.createObjectURL(file);
+  const handleModalClose = () => {
+    setPickerOpen(false);
+    setPickedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+  };
 
-    const tempMessage = {
-      id: tempId,
-      fromId: currentUserId,
-      toId,
-      content: previewUrl,
-      createdAt: new Date().toISOString(),
-      loading: true,
-      type: "image",
-    };
+  const handleModalSend = async (caption) => {
+    if (!pickedFile) return;
 
-    setPending((p) => [...p, tempMessage]);
-
-    const url = await uploadImage(file);
-
-    setPending((p) => p.filter((m) => m.id !== tempId));
-    URL.revokeObjectURL(previewUrl);
-
-    if (!url) return;
-
-    sendMessage({
-      text: url,
-      toId,
-      onSuccess: () => {},
-    });
+    try {
+      const url = await uploadImage(pickedFile);
+      if (url) {
+        sendMessage({ text: caption || "", imageUrl: url, toId });
+      }
+    } finally {
+      handleModalClose();
+    }
   };
 
   return (
@@ -90,10 +91,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 bg-gray-50">
-        <ChatBox
-          messages={[...messages, ...pending]}
-          currentUserId={currentUserId}
-        />
+        <ChatBox messages={messages} currentUserId={currentUserId} />
       </div>
 
       <div className="px-6 py-4 border-t border-gray-200 bg-white flex gap-2">
@@ -116,7 +114,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
 
         <input
           type="text"
-          placeholder={loading ? "uploading image…" : "type your message..."}
+          placeholder="type your message..."
           value={messageText}
           onChange={(e) => setMessageText(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -130,6 +128,13 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
           send
         </button>
       </div>
+      <ImageSendModal
+        open={pickerOpen}
+        filePreview={previewUrl}
+        uploading={loading}
+        onClose={handleModalClose}
+        onSend={handleModalSend}
+      />
       {error && <div className="px-6 pb-3 text-xs text-red-600">{error}</div>}
     </div>
   );
