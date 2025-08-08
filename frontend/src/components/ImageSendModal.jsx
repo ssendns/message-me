@@ -2,17 +2,18 @@ import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 
 export default function ImageSendModal({
+  text,
   open,
   filePreview,
   uploading = false,
   onClose,
   onSend,
 }) {
-  const [caption, setCaption] = useState("");
+  const [caption, setCaption] = useState(text || "");
 
   useEffect(() => {
-    if (open) setCaption("");
-  }, [open]);
+    if (open) setCaption(text || "");
+  }, [open, text]);
 
   if (!open) return null;
 

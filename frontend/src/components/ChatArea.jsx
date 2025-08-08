@@ -57,6 +57,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const handleModalClose = () => {
     setPickerOpen(false);
     setPickedFile(null);
+    setMessageText("");
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -129,6 +130,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
         </button>
       </div>
       <ImageSendModal
+        text={messageText}
         open={pickerOpen}
         filePreview={previewUrl}
         uploading={loading}
