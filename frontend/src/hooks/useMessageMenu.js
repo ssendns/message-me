@@ -9,11 +9,12 @@ export default function useMessageMenu() {
   const closeMenu = () => setMenuOpen(false);
 
   useEffect(() => {
-    if (menuOpen && messageRef.current) {
-      const rect = messageRef.current.getBoundingClientRect();
-      const distanceFromBottom = window.innerHeight - rect.bottom;
-      setShouldOpenUpwards(distanceFromBottom < 200);
-    }
+    if (!menuOpen || !messageRef.current) return;
+
+    const { bottom } = messageRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - bottom;
+
+    setShouldOpenUpwards(spaceBelow < 200);
   }, [menuOpen]);
 
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function useMessageMenu() {
         closeMenu();
       }
     };
+
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);

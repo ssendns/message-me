@@ -1,9 +1,7 @@
 import useSocket from "./useSocket";
-import useChatList from "./useChatList";
 
 export default function useSendMessage(currentUserId) {
   const { socket } = useSocket();
-  const { refreshChats } = useChatList();
 
   const sendMessage = ({ text, toId, onSuccess }) => {
     if (!text.trim() || !toId || !socket) return;
@@ -13,8 +11,6 @@ export default function useSendMessage(currentUserId) {
       to: toId,
       text,
     });
-
-    refreshChats();
 
     if (onSuccess) onSuccess();
   };

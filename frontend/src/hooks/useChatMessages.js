@@ -10,16 +10,16 @@ export default function useChatMessages(currentUserId, toId) {
   useEffect(() => {
     if (!toId || !token) return;
 
-    const loadMessages = async () => {
+    const fetchMessages = async () => {
       try {
-        const res = await getMessagesWithUser(toId, token);
-        setMessages(res.messages || []);
+        const { messages } = await getMessagesWithUser(toId, token);
+        setMessages(messages || []);
       } catch (err) {
         console.error("failed to fetch messages:", err);
       }
     };
 
-    loadMessages();
+    fetchMessages();
   }, [toId, token]);
 
   useEffect(() => {
@@ -28,44 +28,44 @@ export default function useChatMessages(currentUserId, toId) {
     socket.emit("join", currentUserId);
     socket.emit("join_chat", toId.toString());
 
-    const handleReceive = (message) => {
+    const handleReceiveMessage = (message) => {
       if (message.fromId === toId || message.toId === toId) {
         setMessages((prev) => [...prev, message]);
       }
     };
 
-    socket.on("receive_message", handleReceive);
+    socket.on("receive_message", handleReceiveMessage);
 
     return () => {
-      socket.off("receive_message", handleReceive);
+      socket.off("receive_message", handleReceiveMessage);
       socket.emit("leave_chat", toId.toString());
     };
   }, [socket, currentUserId, toId]);
 
   useEffect(() => {
-    const handleEdit = (updated) => {
+    if (!socket) return;
+
+    const handleEditedMessage = ({ id, content }) => {
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === updated.id
-            ? { ...msg, content: updated.content, edited: true }
-            : msg
+          msg.id === id ? { ...msg, content, edited: true } : msg
         )
       );
     };
 
-    socket.on("receive_edited_message", handleEdit);
-    return () => socket.off("receive_edited_message", handleEdit);
+    socket.on("receive_edited_message", handleEditedMessage);
+    return () => socket.off("receive_edited_message", handleEditedMessage);
   }, [socket]);
 
   useEffect(() => {
     if (!socket) return;
 
-    const handleDelete = ({ messageId }) => {
+    const handleDeletedMessage = ({ messageId }) => {
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
     };
 
-    socket.on("delete_message", handleDelete);
-    return () => socket.off("delete_message", handleDelete);
+    socket.on("delete_message", handleDeletedMessage);
+    return () => socket.off("delete_message", handleDeletedMessage);
   }, [socket]);
 
   return { messages, setMessages };
