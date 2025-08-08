@@ -3,16 +3,15 @@ import useSocket from "./useSocket";
 export default function useSendMessage(currentUserId) {
   const { socket } = useSocket();
 
-  const sendMessage = ({ text, toId, onSuccess }) => {
-    if (!text.trim() || !toId || !socket) return;
+  const sendMessage = ({ text, imageUrl, toId }) => {
+    if (!text.trim() && !imageUrl) return;
 
     socket.emit("send_message", {
       from: currentUserId,
       to: toId,
       text,
+      imageUrl,
     });
-
-    if (onSuccess) onSuccess();
   };
 
   return { sendMessage };

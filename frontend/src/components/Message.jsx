@@ -73,9 +73,9 @@ export default function Message({ message, currentUserId }) {
         ) : (
           <MessageContent
             content={message.content}
+            imageUrl={message.imageUrl}
             time={time}
             edited={message.edited}
-            loading={message.loading}
           />
         )}
 
