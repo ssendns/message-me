@@ -8,6 +8,7 @@ import { Paperclip } from "lucide-react";
 
 export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const [messageText, setMessageText] = useState("");
+  const [pending, setPending] = useState([]);
   const fileInputRef = useRef(null);
 
   const { messages } = useChatMessages(currentUserId, toId);
@@ -43,9 +44,27 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = "";
+
+    const tempId = `temp-${Date.now()}`;
+    const previewUrl = URL.createObjectURL(file);
+
+    const tempMessage = {
+      id: tempId,
+      fromId: currentUserId,
+      toId,
+      content: previewUrl,
+      createdAt: new Date().toISOString(),
+      loading: true,
+      type: "image",
+    };
+
+    setPending((p) => [...p, tempMessage]);
 
     const url = await uploadImage(file);
-    e.target.value = "";
+
+    setPending((p) => p.filter((m) => m.id !== tempId));
+    URL.revokeObjectURL(previewUrl);
 
     if (!url) return;
 
@@ -71,7 +90,10 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 bg-gray-50">
-        <ChatBox messages={messages} currentUserId={currentUserId} />
+        <ChatBox
+          messages={[...messages, ...pending]}
+          currentUserId={currentUserId}
+        />
       </div>
 
       <div className="px-6 py-4 border-t border-gray-200 bg-white flex gap-2">
@@ -94,7 +116,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
 
         <input
           type="text"
-          placeholder="type your message..."
+          placeholder={loading ? "uploading image…" : "type your message..."}
           value={messageText}
           onChange={(e) => setMessageText(e.target.value)}
           onKeyDown={handleKeyDown}

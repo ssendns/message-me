@@ -75,6 +75,7 @@ export default function Message({ message, currentUserId }) {
             content={message.content}
             time={time}
             edited={message.edited}
+            loading={message.loading}
           />
         )}
 
