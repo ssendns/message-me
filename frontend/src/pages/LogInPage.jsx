@@ -4,11 +4,13 @@ import { useNavigate, Link } from "react-router-dom";
 export default function LogInPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
     try {
       const res = await fetch("http://localhost:3000/log-in", {
         method: "POST",
@@ -16,15 +18,23 @@ export default function LogInPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) throw new Error("failed to log in");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "failed to log in");
+      }
 
-      const data = await res.json();
-      localStorage.setItem("token", data.user.token);
-      localStorage.setItem("username", data.user.username);
-      localStorage.setItem("id", data.user.id);
+      const { user } = await res.json();
+
+      localStorage.setItem("token", user.token);
+      localStorage.setItem("username", user.username);
+      localStorage.setItem("id", String(user.id));
+
       navigate("/");
     } catch (err) {
       console.error("login failed:", err);
+      alert(err.message || "an unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,6 +56,7 @@ export default function LogInPage() {
           required
           className="w-full px-4 py-2 border border-muted rounded focus:outline-none focus:ring-2 focus:ring-primary"
         />
+
         <input
           type="password"
           placeholder="password"
@@ -57,9 +68,10 @@ export default function LogInPage() {
 
         <button
           type="submit"
-          className="w-full py-2 bg-primary text-white rounded hover:bg-opacity-90 transition"
+          disabled={loading}
+          className="w-full py-2 bg-primary text-white rounded hover:bg-opacity-90 transition disabled:opacity-50"
         >
-          log in
+          {loading ? "logging in..." : "log in"}
         </button>
 
         <p className="text-center text-sm">

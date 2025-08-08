@@ -4,10 +4,12 @@ import { useNavigate, Link } from "react-router-dom";
 export default function SignUpPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
 
     try {
       const res = await fetch("http://localhost:3000/sign-up", {
@@ -16,7 +18,10 @@ export default function SignUpPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) throw new Error("failed to sign up");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "failed to sign up");
+      }
 
       const data = await res.json();
       localStorage.setItem("token", data.user.token);
@@ -25,6 +30,7 @@ export default function SignUpPage() {
       navigate("/");
     } catch (err) {
       console.error("signup failed:", err);
+      setError(err.message);
     }
   };
 
@@ -37,6 +43,8 @@ export default function SignUpPage() {
         <h2 className="text-2xl font-semibold text-center text-primary">
           sign up
         </h2>
+
+        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
         <input
           type="text"

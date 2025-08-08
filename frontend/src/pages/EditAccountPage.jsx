@@ -7,19 +7,37 @@ export default function EditAccountPage() {
     localStorage.getItem("username") || ""
   );
   const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!username.trim() && !password.trim()) {
+      alert("username and password are required");
+      return;
+    }
+
+    setLoading(true);
     try {
-      await updateUser({ newUsername: username, newPassword: password, token });
+      await updateUser({
+        newUsername: username,
+        newPassword: password,
+        token,
+      });
+
       localStorage.setItem("username", username);
       alert("account updated successfully");
       navigate("/");
     } catch (err) {
-      alert(err.message || "error updating account");
+      console.error("update failed:", err);
+      alert(
+        err?.response?.data?.message || err.message || "error updating account."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -29,6 +47,7 @@ export default function EditAccountPage() {
         <h1 className="text-2xl font-semibold mb-4 text-primary">
           edit account
         </h1>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block mb-1">username</label>
@@ -40,6 +59,7 @@ export default function EditAccountPage() {
               required
             />
           </div>
+
           <div>
             <label className="block mb-1">new password</label>
             <input
@@ -50,11 +70,13 @@ export default function EditAccountPage() {
               required
             />
           </div>
+
           <button
             type="submit"
-            className="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90"
+            disabled={loading}
+            className="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 disabled:opacity-50"
           >
-            save changes
+            {loading ? "saving..." : "save changes"}
           </button>
         </form>
       </div>
