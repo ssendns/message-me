@@ -140,7 +140,7 @@ export default function Message({ message, currentUserId }) {
             imageUrl={message.imageUrl}
             time={time}
             edited={message.edited}
-            unread={message.read}
+            read={message.read}
             isOwn={isOwn}
           />
         )}

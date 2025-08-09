@@ -5,7 +5,7 @@ export default function MessageContent({
   imageUrl,
   time,
   edited,
-  unread,
+  read,
   isOwn,
 }) {
   return (
@@ -32,7 +32,7 @@ export default function MessageContent({
         <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] opacity-70">
           {edited && <span>edited</span>}
           <span>{time}</span>
-          {isOwn && (unread ? <CheckCheck size={14} /> : <Check size={14} />)}
+          {isOwn && (read ? <CheckCheck size={14} /> : <Check size={14} />)}
         </div>
       )}
     </div>
