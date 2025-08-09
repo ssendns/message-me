@@ -1,7 +1,9 @@
 export default function MessageContent({ content, imageUrl, time, edited }) {
   return (
-    <div className="flex break-all">
-      <div className={`${edited ? "pr-14" : "pr-5"} break-words break-all`}>
+    <div className="break-all max-w-[300px]">
+      <div
+        className={`${edited ? "pr-14 pb-1" : "pr-5"} break-words break-all`}
+      >
         {imageUrl && (
           <a href={imageUrl} target="_blank" rel="noreferrer">
             <img
@@ -11,7 +13,11 @@ export default function MessageContent({ content, imageUrl, time, edited }) {
             />
           </a>
         )}
-        {content && <div className="pr-14">{content}</div>}
+        {content && (
+          <p className="whitespace-pre-wrap break-words leading-relaxed">
+            {content}
+          </p>
+        )}
       </div>
       {time && (
         <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] opacity-70">
