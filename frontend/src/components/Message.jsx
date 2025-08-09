@@ -67,15 +67,13 @@ export default function Message({ message, currentUserId }) {
   };
 
   return (
-    <div
-      className={`flex ${isOwn ? "justify-end" : "justify-start"} my-2`}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        openMenu();
-      }}
-    >
+    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} my-2`}>
       <div
         ref={messageRef}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          openMenu();
+        }}
         className={`relative px-4 py-2 max-w-xs break-words rounded-xl ${
           isOwn
             ? "bg-primary text-white rounded-br-none"
