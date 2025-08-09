@@ -24,6 +24,7 @@ model Message {
   toId      Int?
   content   String    @default("")
   imageUrl  String? 
+  imagePublicId String?
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
   edited Boolean @default(false)
