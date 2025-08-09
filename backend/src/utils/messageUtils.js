@@ -56,7 +56,7 @@ const deleteMessage = async ({ id }, socket, io) => {
 };
 
 async function editMessage({ id, userId, newText, newImageUrl }, socket, io) {
-  if ((!text || !text.trim()) && !imageUrl) {
+  if ((!newText || !newText.trim()) && !newImageUrl) {
     throw new Error("message must have text or image");
   }
   try {
@@ -80,7 +80,6 @@ async function editMessage({ id, userId, newText, newImageUrl }, socket, io) {
       id: updated.id,
       fromId: updated.fromId,
       toId: updated.toId,
-      content: updated.content,
       content: updated.content,
       imageUrl: updated.imageUrl,
       updatedAt: updated.updatedAt,
