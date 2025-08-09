@@ -84,12 +84,13 @@ function setupSocket(server) {
           where: {
             fromId,
             toId,
-            hasUnread: true,
+            read: false,
           },
           data: {
-            hasUnread: false,
+            read: true,
           },
         });
+        io.to(fromId.toString()).emit("messages_read", { fromId, toId });
         console.log(`marked messages from ${fromId} to ${toId} as read`);
       } catch (err) {
         console.error("failed to mark messages as read:", err);

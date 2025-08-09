@@ -37,14 +37,14 @@ const getMessagesWithUser = async (req, res) => {
       where: {
         fromId: toId,
         toId: myId,
-        hasUnread: true,
+        read: false,
       },
     });
 
     res.json({ messages, unreadCount });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "server error" });
   }
 };
 

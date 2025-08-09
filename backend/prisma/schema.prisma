@@ -28,5 +28,5 @@ model Message {
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
   edited Boolean @default(false)
-  hasUnread  Boolean  @default(true)
+  read  Boolean  @default(false)
 }
