@@ -45,10 +45,17 @@ export default function useChatMessages(currentUserId, toId) {
   useEffect(() => {
     if (!socket) return;
 
-    const handleEditedMessage = ({ id, content }) => {
+    const handleEditedMessage = ({ id, content, imageUrl }) => {
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === id ? { ...msg, content, edited: true } : msg
+        prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                content: content,
+                imageUrl: imageUrl,
+                edited: true,
+              }
+            : m
         )
       );
     };

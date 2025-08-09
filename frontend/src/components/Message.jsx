@@ -1,15 +1,21 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import useSocket from "../hooks/useSocket";
 import MessageMenu from "./MessageMenu";
 import EditInput from "./EditInput";
 import MessageContent from "./MessageContent";
 import useMessageMenu from "../hooks/useMessageMenu";
+import useUploadImage from "../hooks/useUploadImage";
+import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 
 export default function Message({ message, currentUserId }) {
   const isOwn = message.fromId === currentUserId;
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(message.content);
+  const [editText, setEditText] = useState(message.content || "");
+  const [editImageUrl, setEditImageUrl] = useState(message.imageUrl || null);
   const { socket, isReady } = useSocket();
+
+  const fileInputRef = useRef(null);
+  const { uploadImage, loading: uploading } = useUploadImage();
 
   const { messageRef, menuOpen, shouldOpenUpwards, openMenu, closeMenu } =
     useMessageMenu();
@@ -33,17 +39,30 @@ export default function Message({ message, currentUserId }) {
 
   const handleEdit = () => {
     setIsEditing(true);
+    setEditText(message.content || "");
+    setEditImageUrl(message.imageUrl || null);
     closeMenu();
   };
 
+  const pickImage = () => fileInputRef.current?.click();
+
+  const onFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const url = await uploadImage(file);
+    if (url) setEditImageUrl(url);
+  };
+
+  const removeImage = () => setEditImageUrl(null);
+
   const handleEditSubmit = () => {
-    if (editContent.trim() && editContent !== message.content) {
-      socket.emit("edit_message", {
-        id: message.id,
-        userId: currentUserId,
-        newContent: editContent,
-      });
-    }
+    socket.emit("edit_message", {
+      id: message.id,
+      userId: currentUserId,
+      newText: editText,
+      newImageUrl: editImageUrl,
+    });
     setIsEditing(false);
   };
 
@@ -64,12 +83,57 @@ export default function Message({ message, currentUserId }) {
         }`}
       >
         {isEditing ? (
-          <EditInput
-            value={editContent}
-            onChange={setEditContent}
-            onSave={handleEditSubmit}
-            onCancel={() => setIsEditing(false)}
-          />
+          <div className="space-y-2">
+            {editImageUrl && (
+              <div className="relative">
+                <img
+                  src={editImageUrl}
+                  alt="attachment"
+                  className="max-w-[260px] rounded-lg block"
+                />
+                <button
+                  onClick={removeImage}
+                  className="absolute top-1 right-1 bg-white/90 text-black rounded-full p-1"
+                  title="remove image"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onFileChange}
+              />
+              <button
+                onClick={pickImage}
+                disabled={uploading}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
+                  isOwn ? "bg-white/10" : "bg-white"
+                } disabled:opacity-50`}
+                title="change image"
+              >
+                {uploading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <ImageIcon size={16} />
+                )}
+                {editImageUrl ? "replace image" : "add image"}
+              </button>
+            </div>
+
+            <EditInput
+              value={editText}
+              onChange={setEditText}
+              onSave={handleEditSubmit}
+              onCancel={() => setIsEditing(false)}
+              saveDisabled={uploading}
+            />
+          </div>
         ) : (
           <MessageContent
             content={message.content}
