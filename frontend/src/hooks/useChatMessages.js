@@ -31,6 +31,9 @@ export default function useChatMessages(currentUserId, toId) {
     const handleReceiveMessage = (message) => {
       if (message.fromId === toId || message.toId === toId) {
         setMessages((prev) => [...prev, message]);
+        if (message.fromId === toId && message.toId === currentUserId) {
+          socket.emit("read_messages", { fromId: toId, toId: currentUserId });
+        }
       }
     };
 
@@ -40,6 +43,23 @@ export default function useChatMessages(currentUserId, toId) {
       socket.off("receive_message", handleReceiveMessage);
       socket.emit("leave_chat", toId.toString());
     };
+  }, [socket, currentUserId, toId]);
+
+  useEffect(() => {
+    if (!socket || !toId || !currentUserId) return;
+
+    const handleMessagesRead = ({ fromId, toId: readerId }) => {
+      if (readerId === toId && fromId === currentUserId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.fromId === currentUserId ? { ...m, read: true } : m
+          )
+        );
+      }
+    };
+
+    socket.on("messages_read", handleMessagesRead);
+    return () => socket.off("messages_read", handleMessagesRead);
   }, [socket, currentUserId, toId]);
 
   useEffect(() => {
@@ -74,6 +94,38 @@ export default function useChatMessages(currentUserId, toId) {
     socket.on("delete_message", handleDeletedMessage);
     return () => socket.off("delete_message", handleDeletedMessage);
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket || !toId || !currentUserId || messages.length === 0) return;
+
+    const hasIncomingUnread = messages.some(
+      (m) => m.fromId === toId && m.hasUnread
+    );
+    if (!hasIncomingUnread) return;
+
+    socket.emit("read_messages", { fromId: toId, toId: currentUserId });
+
+    setMessages((prev) =>
+      prev.map((m) => (m.fromId === toId ? { ...m, hasUnread: false } : m))
+    );
+  }, [socket, currentUserId, toId, messages, messages.length]);
+
+  useEffect(() => {
+    if (!socket || !toId || !currentUserId) return;
+
+    const handleMessagesRead = ({ fromId, toId: readerId }) => {
+      if (fromId === currentUserId && readerId === toId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.fromId === currentUserId ? { ...m, hasUnread: false } : m
+          )
+        );
+      }
+    };
+
+    socket.on("messages_read", handleMessagesRead);
+    return () => socket.off("messages_read", handleMessagesRead);
+  }, [socket, currentUserId, toId]);
 
   return { messages, setMessages };
 }
