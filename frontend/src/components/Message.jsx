@@ -50,8 +50,8 @@ export default function Message({ message, currentUserId }) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const url = await uploadImage(file);
-    if (url) setEditImageUrl(url);
+    const uploaded = await uploadImage(file);
+    if (uploaded?.url) setEditImageUrl(uploaded.url);
   };
 
   const removeImage = () => setEditImageUrl(null);

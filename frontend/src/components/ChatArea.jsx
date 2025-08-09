@@ -66,11 +66,15 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
 
   const handleModalSend = async (caption) => {
     if (!pickedFile) return;
-
     try {
-      const url = await uploadImage(pickedFile);
-      if (url) {
-        sendMessage({ text: caption || "", imageUrl: url, toId });
+      const uploaded = await uploadImage(pickedFile);
+      if (uploaded?.url) {
+        sendMessage({
+          text: caption || " ",
+          imageUrl: uploaded.url,
+          imagePublicId: uploaded.publicId,
+          toId,
+        });
       }
     } finally {
       handleModalClose();
