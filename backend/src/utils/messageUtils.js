@@ -1,6 +1,7 @@
 const prisma = require("./db");
+const cloudinary = require("../../cloudinary");
 
-async function createMessage(from, to, text, imageUrl) {
+async function createMessage(from, to, text, imageUrl, imagePublicId) {
   if ((!text || !text.trim()) && !imageUrl) {
     throw new Error("message must have text or image");
   }
@@ -16,6 +17,7 @@ async function createMessage(from, to, text, imageUrl) {
       toId: to,
       content: text?.trim() || "",
       imageUrl: imageUrl || null,
+      imagePublicId: imagePublicId || null,
     },
   });
 }
@@ -28,11 +30,22 @@ const deleteMessage = async ({ id }, socket, io) => {
 
   try {
     const message = await prisma.message.findUnique({ where: { id } });
-
     if (!message) return;
-
     const { fromId, toId } = message;
-
+    if (message.imagePublicId) {
+      try {
+        console.log("deleting image with publicId:", message.imagePublicId);
+        await cloudinary.uploader.destroy(message.imagePublicId, {
+          invalidate: true,
+        });
+        console.log("cloudinary delete result:", message.imagePublicId);
+      } catch (e) {
+        console.warn(
+          "cloudinary destroy failed (will continue):",
+          e?.message || e
+        );
+      }
+    }
     await prisma.message.delete({ where: { id } });
 
     const payloadForFrom = {
@@ -55,23 +68,49 @@ const deleteMessage = async ({ id }, socket, io) => {
   }
 };
 
-async function editMessage({ id, userId, newText, newImageUrl }, socket, io) {
+async function editMessage(
+  { id, userId, newText, newImageUrl, newImagePublicId },
+  socket,
+  io
+) {
   if ((!newText || !newText.trim()) && !newImageUrl) {
     throw new Error("message must have text or image");
   }
   try {
     const existing = await prisma.message.findUnique({ where: { id } });
-
     if (!existing || existing.fromId !== userId) {
       socket.emit("error", "you can not edit this message");
       return;
     }
 
+    const replacingImage = typeof newImageUrl !== "undefined";
+    if (
+      replacingImage &&
+      existing.imagePublicId &&
+      existing.imagePublicId !== newImagePublicId
+    ) {
+      try {
+        console.log("deleting image with publicId:", existing.imagePublicId);
+        const result = await cloudinary.uploader.destroy(
+          existing.imagePublicId
+        );
+        console.log("cloudinary delete result:", result);
+      } catch (e) {
+        console.warn("cloudinary destroy on edit failed:", e?.message || e);
+      }
+    }
+
     const updated = await prisma.message.update({
       where: { id },
       data: {
-        content: newText?.trim() || "",
-        imageUrl: newImageUrl || null,
+        content:
+          typeof newText === "string" ? newText.trim() : existing.content,
+        imageUrl:
+          typeof newImageUrl !== "undefined" ? newImageUrl : existing.imageUrl,
+        imagePublicId:
+          typeof newImagePublicId !== "undefined"
+            ? newImagePublicId
+            : existing.imagePublicId,
         edited: true,
       },
     });
@@ -82,6 +121,7 @@ async function editMessage({ id, userId, newText, newImageUrl }, socket, io) {
       toId: updated.toId,
       content: updated.content,
       imageUrl: updated.imageUrl,
+      imagePublicId: updated.imagePublicId,
       updatedAt: updated.updatedAt,
       edit: updated.edited,
     };

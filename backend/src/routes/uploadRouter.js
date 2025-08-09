@@ -9,19 +9,20 @@ const upload = multer({ dest: "uploads/" });
 router.post("/", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({ message: "no file uploaded" });
     }
 
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: "chat_uploads",
+      resource_type: "image",
     });
 
     fs.unlinkSync(req.file.path);
 
-    res.json({ url: result.secure_url });
+    res.json({ url: result.secure_url, publicId: result.public_id });
   } catch (err) {
-    console.error("Upload failed:", err);
-    res.status(500).json({ message: "Upload failed" });
+    console.error("upload failed:", err);
+    res.status(500).json({ message: "upload failed" });
   }
 });
 

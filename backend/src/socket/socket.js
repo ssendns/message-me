@@ -35,25 +35,35 @@ function setupSocket(server) {
       console.log(`user joined chat room with user ${chatUserId}`);
     });
 
-    socket.on("send_message", async ({ from, to, text, imageUrl }) => {
-      console.log(`${from} → ${to}: ${text}`);
-      try {
-        const message = await createMessage(from, to, text, imageUrl);
-        const fullMessage = {
-          id: message.id,
-          fromId: message.fromId,
-          toId: message.toId,
-          content: message.content,
-          imageUrl: message.imageUrl,
-          createdAt: message.createdAt,
-        };
+    socket.on(
+      "send_message",
+      async ({ from, to, text, imageUrl, imagePublicId }) => {
+        console.log(`${from} → ${to}: ${text}`);
+        try {
+          const message = await createMessage(
+            from,
+            to,
+            text,
+            imageUrl,
+            imagePublicId
+          );
+          const fullMessage = {
+            id: message.id,
+            fromId: message.fromId,
+            toId: message.toId,
+            content: message.content,
+            imageUrl: message.imageUrl,
+            imagePublicId: message.imagePublicId,
+            createdAt: message.createdAt,
+          };
 
-        io.to(to.toString()).emit("receive_message", fullMessage);
-        io.to(from.toString()).emit("receive_message", fullMessage);
-      } catch (err) {
-        console.error("send_message failed:", err);
+          io.to(to.toString()).emit("receive_message", fullMessage);
+          io.to(from.toString()).emit("receive_message", fullMessage);
+        } catch (err) {
+          console.error("send_message failed:", err);
+        }
       }
-    });
+    );
 
     socket.on("edit_message", (data) => {
       editMessage(data, socket, io);
