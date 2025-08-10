@@ -59,6 +59,8 @@ const getAllChats = async (req, res) => {
 
         return {
           id: chat.id,
+          type: chat.type,
+          title: chat.title,
           participants: chat.participants.map((p) => ({
             id: p.user.id,
             username: p.user.username,
