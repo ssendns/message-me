@@ -95,20 +95,20 @@ const getChatMessages = async (req, res) => {
   }
 };
 
-// body: { type: 'PRIVATE'|'PUBLIC', peerId? (for PRIVATE), title? (for PUBLIC), participantIds? (for PUBLIC) }
+// body: { type: 'DIRECT'|'GROUP', peerId? (for direct), title? (for group), participantIds? (for group) }
 const createChat = async (req, res) => {
   const userId = Number(req.user.userId);
   const { type, peerId, title, participantIds } = req.body;
 
   try {
-    if (type === "PRIVATE") {
+    if (type === "DIRECT") {
       const u1 = Math.min(userId, Number(peerId));
       const u2 = Math.max(userId, Number(peerId));
       if (!u2) return res.status(400).json({ message: "peerId required" });
 
       let chat = await prisma.chat.findFirst({
         where: {
-          type: "PRIVATE",
+          type: "DIRECT",
           participants: { some: { userId: u1 } },
           AND: { participants: { some: { userId: u2 } } },
         },
@@ -117,7 +117,7 @@ const createChat = async (req, res) => {
       if (!chat) {
         chat = await prisma.chat.create({
           data: {
-            type: "PRIVATE",
+            type: "DIRECT",
             participants: { create: [{ userId: u1 }, { userId: u2 }] },
           },
           select: { id: true },
@@ -126,14 +126,14 @@ const createChat = async (req, res) => {
       return res.json({ id: chat.id });
     }
 
-    if (type === "PUBLIC") {
+    if (type === "GROUP") {
       const ids = Array.from(new Set([userId, ...(participantIds || [])])).map(
         Number
       );
       if (!title) return res.status(400).json({ message: "title required" });
       const chat = await prisma.chat.create({
         data: {
-          type: "PUBLIC",
+          type: "GROUP",
           title,
           participants: { create: ids.map((id) => ({ userId: id })) },
         },
@@ -180,7 +180,7 @@ const deleteChat = async (req, res) => {
   }
 };
 
-// PUBLIC chat: add/remove participant
+// group chat: add/remove participant
 const addParticipant = async (req, res) => {
   const me = Number(req.user.userId);
   const chatId = Number(req.params.chatId);
