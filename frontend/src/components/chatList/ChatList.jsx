@@ -30,9 +30,14 @@ export default function ChatList({
   }, [socket]);
 
   const isChatOnline = (item) => {
+    if ((item.type || "").toUpperCase() === "GROUP") {
+      return false;
+    }
+
     const others = (item.participants || [])
       .map((p) => String(p.id))
       .filter((id) => id !== String(currentUserId));
+
     return others.some((id) => onlineUserIds.includes(id));
   };
 
