@@ -1,7 +1,7 @@
 import { Check, CheckCheck } from "lucide-react";
 
 export default function MessageContent({
-  content,
+  text,
   imageUrl,
   time,
   edited,
@@ -22,9 +22,9 @@ export default function MessageContent({
             />
           </a>
         )}
-        {content && (
+        {text && (
           <p className="whitespace-pre-wrap break-words leading-relaxed">
-            {content}
+            {text}
           </p>
         )}
       </div>
