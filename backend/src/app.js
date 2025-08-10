@@ -8,8 +8,8 @@ const app = express();
 
 const authRouter = require("./routes/authRouter");
 const userRouter = require("./routes/userRouter");
-const messageRouter = require("./routes/messageRouter");
 const uploadRouter = require("./routes/uploadRouter");
+const chatRouter = require("./routes/chatRouter");
 
 app.use(cors());
 app.use(express.json());
@@ -21,7 +21,7 @@ app.get("/test", async (req, res) => {
 });
 
 app.use("/profile", userRouter);
-app.use("/messages", messageRouter);
+app.use("/chats", chatRouter);
 app.use("/upload", uploadRouter);
 app.use("/", authRouter);
 
