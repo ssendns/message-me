@@ -1,5 +1,7 @@
 import useChatList from "../hooks/useChatList";
 import ChatListItem from "./ChatListItem";
+import useSocket from "../hooks/useSocket";
+import { useState, useEffect, useRef } from "react";
 
 export default function ChatList({
   token,
@@ -8,30 +10,94 @@ export default function ChatList({
   onSelect,
   searchTerm,
 }) {
-  const { chats, onlineUserIds } = useChatList(
+  const { chats, onlineUserIds, markChatRead } = useChatList(
     token,
     currentUserId,
-    currentChat
+    currentChat,
+    searchTerm
   );
-  const search = searchTerm.toLowerCase();
-  const filteredChats =
-    search.trim() === ""
-      ? chats.filter((chat) => chat.lastMessage !== "")
-      : chats.filter((chat) => chat.username.toLowerCase().includes(search));
+  const { socket } = useSocket();
+  const [pendingPeerId, setPendingPeerId] = useState(null);
+  const pendingHandlerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (socket && pendingHandlerRef.current) {
+        socket.off("chat_ready", pendingHandlerRef.current);
+        pendingHandlerRef.current = null;
+      }
+    };
+  }, [socket]);
+
+  const isChatOnline = (item) => {
+    const others = (item.participants || [])
+      .map((p) => String(p.id))
+      .filter((id) => id !== String(currentUserId));
+    return others.some((id) => onlineUserIds.includes(id));
+  };
+
+  const handleSelect = (item) => {
+    if (!item.isNew) {
+      onSelect(item);
+      markChatRead(item.id);
+      return;
+    }
+
+    if (!socket) return;
+
+    const peerId = item.participants?.[0]?.id;
+    if (!peerId) return;
+
+    if (pendingPeerId && pendingPeerId !== peerId) return;
+
+    setPendingPeerId(peerId);
+
+    const onReady = ({ chatId, peerId: returnedPeerId }) => {
+      if (returnedPeerId !== peerId) return;
+
+      setPendingPeerId(null);
+      if (socket && pendingHandlerRef.current) {
+        socket.off("chat_ready", pendingHandlerRef.current);
+        pendingHandlerRef.current = null;
+      }
+
+      onSelect({
+        id: chatId,
+        type: "PRIVATE",
+        displayName: item.displayName,
+        participants: item.participants,
+        lastMessageText: "",
+        lastMessageImageUrl: null,
+        time: null,
+        unreadCount: 0,
+        hasUnread: false,
+      });
+    };
+
+    pendingHandlerRef.current = onReady;
+    socket.on("chat_ready", onReady);
+
+    socket.emit("get_or_create_chat", { peerId });
+  };
 
   return (
     <div className="space-y-1 px-2 pt-2 overflow-y-auto h-full">
-      {filteredChats.map((chat) => (
+      {chats.map((it) => (
         <ChatListItem
-          key={chat.id}
-          chat={chat}
-          isActive={chat.id === currentChat?.id}
-          isOnline={onlineUserIds.includes(String(chat.id))}
-          onClick={() => onSelect(chat)}
+          key={it.id}
+          chat={it}
+          isActive={String(it.id) === String(currentChat?.id)}
+          isOnline={isChatOnline(it)}
+          onClick={() => handleSelect(it)}
+          waiting={
+            it.isNew &&
+            pendingPeerId &&
+            it.participants?.[0]?.id === pendingPeerId
+          }
         />
       ))}
 
-      {filteredChats.length === 0 && (
+      {chats.length === 0 && (
         <p className="text-muted text-center py-4 text-sm">no chats found</p>
       )}
     </div>
