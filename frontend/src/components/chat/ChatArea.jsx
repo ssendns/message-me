@@ -10,6 +10,8 @@ export default function ChatArea({
   displayName,
   chatId,
   currentUserId,
+  participants,
+  type,
   onBack,
 }) {
   const [messageText, setMessageText] = useState("");
@@ -93,7 +95,12 @@ export default function ChatArea({
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 bg-gray-50">
-        <ChatBox messages={messages} currentUserId={currentUserId} />
+        <ChatBox
+          messages={messages}
+          currentUserId={currentUserId}
+          participants={participants}
+          isGroup={String(type).toUpperCase() === "GROUP"}
+        />
       </div>
 
       <div className="px-6 py-4 border-t border-gray-200 bg-white flex gap-2">

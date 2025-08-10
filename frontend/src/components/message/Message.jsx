@@ -7,7 +7,7 @@ import useMessageMenu from "../../hooks/useMessageMenu";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 
-export default function Message({ message, currentUserId }) {
+export default function Message({ message, currentUserId, authorName = null }) {
   const isOwn = message.fromId === currentUserId;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -91,6 +91,15 @@ export default function Message({ message, currentUserId }) {
             : "bg-gray-200 text-gray-800 rounded-bl-none"
         }`}
       >
+        {authorName && !isOwn && (
+          <div
+            className={`text-[11px] leading-none font-medium truncate ${
+              isOwn ? "text-white/80" : "text-gray-600"
+            }`}
+          >
+            {authorName}
+          </div>
+        )}
         {isEditing ? (
           <div className="space-y-2">
             {editImageUrl && (

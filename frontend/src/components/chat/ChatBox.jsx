@@ -1,9 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import Message from "../message/Message";
 import DateLabel from "./DateLabel";
 import { formatDate } from "../../utils/formatDate";
 
-export default function ChatBox({ messages, currentUserId }) {
+export default function ChatBox({
+  messages,
+  currentUserId,
+  participants = [],
+  isGroup = false,
+}) {
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -11,6 +16,12 @@ export default function ChatBox({ messages, currentUserId }) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const nameById = useMemo(() => {
+    const map = new Map();
+    (participants || []).forEach((p) => map.set(String(p.id), p.username));
+    return map;
+  }, [participants]);
 
   const renderMessages = (messages) => {
     if (messages.length === 0) {
@@ -23,17 +34,23 @@ export default function ChatBox({ messages, currentUserId }) {
       const dateLabel = message.createdAt
         ? formatDate(message.createdAt)
         : null;
-
       const showDate = dateLabel && dateLabel !== lastDateLabel;
+      if (showDate) lastDateLabel = dateLabel;
 
-      if (showDate) {
-        lastDateLabel = dateLabel;
-      }
+      const isOwn = message.fromId === currentUserId;
+      const authorName =
+        !isOwn && isGroup
+          ? nameById.get(String(message.fromId)) || "member"
+          : null;
 
       return (
         <div key={message.id}>
           {showDate && <DateLabel date={dateLabel} />}
-          <Message message={message} currentUserId={currentUserId} />
+          <Message
+            message={message}
+            currentUserId={currentUserId}
+            authorName={authorName}
+          />
         </div>
       );
     });
