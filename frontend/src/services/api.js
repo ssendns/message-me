@@ -26,10 +26,6 @@ export function getAllUsers(token) {
   return request("/profile/all", { token });
 }
 
-export function getMessagesWithUser(toId, token) {
-  return request(`/messages/${toId}`, { token });
-}
-
 export function updateUser({ newUsername, newPassword, token }) {
   return request("/profile/edit", {
     method: "PATCH",
@@ -38,26 +34,11 @@ export function updateUser({ newUsername, newPassword, token }) {
   });
 }
 
-export async function deleteMessage(id, token) {
-  await request(`/messages/${id}`, {
-    method: "DELETE",
-    token,
-  });
-}
-
-export function createMessage({ toId, text, token }) {
-  return request("/messages", {
-    method: "POST",
-    token,
-    body: { toId, text },
-  });
-}
-
 export async function uploadImage(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch("http://localhost:3000/upload", {
+  const res = await fetch(`${BASE_URL}/upload`, {
     method: "POST",
     body: formData,
   });
@@ -65,4 +46,30 @@ export async function uploadImage(file) {
   if (!res.ok) throw new Error("upload failed");
 
   return await res.json();
+}
+
+export async function getChatMessages({ chatId, token }) {
+  return request(`/chats/${chatId}`, {
+    token,
+  });
+}
+
+export async function getAllChats(token) {
+  return request(`/chats`, {
+    token,
+  });
+}
+
+export async function signUp({ username, password }) {
+  return request("/sign-up", {
+    method: "POST",
+    body: { username, password },
+  });
+}
+
+export async function logIn({ username, password }) {
+  return request("/log-in", {
+    method: "POST",
+    body: { username, password },
+  });
 }
