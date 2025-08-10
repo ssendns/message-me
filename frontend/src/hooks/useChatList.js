@@ -25,14 +25,16 @@ export default function useChatList(
         const others = (chat.participants || []).filter(
           (p) => p.id !== currentUserId
         );
+        const fallbackName = others.map((p) => p.username).join(", ");
+        const isGroup = String(chat.type || "").toUpperCase() === "GROUP";
+        const displayName = isGroup
+          ? (chat.title && chat.title.trim()) || fallbackName
+          : fallbackName;
         return {
           id: chat.id,
           type: chat.type,
           participants: chat.participants,
-          displayName:
-            chat.type === "PUBLIC"
-              ? chat.title || others.map((p) => p.username).join(", ")
-              : others.map((p) => p.username).join(", "),
+          displayName,
           lastMessageText: last?.text ?? "",
           lastMessageImageUrl: last?.imageUrl ?? "",
           lastMessageId: last?.id ?? null,
