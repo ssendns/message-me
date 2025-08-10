@@ -1,51 +1,4 @@
-const prisma = require("../utils/db");
-
-async function getOrCreateChat(user1, user2) {
-  const [u1, u2] = [Math.min(user1, user2), Math.max(user1, user2)];
-  let chat = await prisma.chat.findFirst({
-    where: {
-      participants: { some: { userId: u1 } },
-      AND: { participants: { some: { userId: u2 } } },
-    },
-    select: { id: true },
-  });
-  if (!chat) {
-    chat = await prisma.chat.create({
-      data: {
-        participants: { create: [{ userId: u1 }, { userId: u2 }] },
-      },
-      select: { id: true },
-    });
-  }
-  return chat.id;
-}
-
-async function getOtherUserIds(chatId, userId) {
-  const participants = await prisma.chatParticipant.findMany({
-    where: { chatId },
-    select: { userId: true },
-  });
-  return participants.map((p) => p.userId).filter((uid) => uid !== userId);
-}
-
-async function getChatMessages(req, res) {
-  try {
-    const chatId = Number(req.params.chatId);
-    if (!chatId) {
-      return res.status(400).json({ error: "invalid chatId" });
-    }
-
-    const messages = await prisma.message.findMany({
-      where: { chatId },
-      orderBy: { createdAt: "asc" },
-    });
-
-    return res.json({ messages });
-  } catch (err) {
-    console.error("getChatMessages failed:", err);
-    return res.status(500).json({ error: "failed to fetch messages" });
-  }
-}
+const prisma = require("../../utils/db");
 
 const getAllChats = async (req, res) => {
   const userId = req.user.userId;
@@ -111,9 +64,26 @@ const getAllChats = async (req, res) => {
   }
 };
 
+async function getChatMessages(req, res) {
+  try {
+    const chatId = Number(req.params.chatId);
+    if (!chatId) {
+      return res.status(400).json({ error: "invalid chatId" });
+    }
+
+    const messages = await prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return res.json({ messages });
+  } catch (err) {
+    console.error("getChatMessages failed:", err);
+    return res.status(500).json({ error: "failed to fetch messages" });
+  }
+}
+
 module.exports = {
-  getOrCreateChat,
-  getChatMessages,
-  getOtherUserIds,
   getAllChats,
+  getChatMessages,
 };

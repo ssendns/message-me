@@ -1,5 +1,5 @@
-const prisma = require("../utils/db");
-const cloudinary = require("../../cloudinary");
+const prisma = require("../../utils/db");
+const cloudinary = require("../../../cloudinary");
 
 async function createMessage(chatId, fromId, text, imageUrl, imagePublicId) {
   if ((!text || !text.trim()) && !imageUrl) {

@@ -1,6 +1,6 @@
 const { Server } = require("socket.io");
-const messageController = require("../controllers/messageController");
-const chatController = require("../controllers/chatController");
+const messageController = require("./controllers/messageSocketController");
+const chatController = require("./controllers/chatSocketController");
 const prisma = require("../utils/db");
 
 function setupSocket(server) {

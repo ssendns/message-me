@@ -1,4 +1,4 @@
-const prisma = require("../utils/db");
+const prisma = require("../../utils/db");
 const bcrypt = require("bcryptjs");
 
 const getProfile = async (req, res) => {

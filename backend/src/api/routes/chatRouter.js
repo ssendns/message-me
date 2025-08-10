@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
-const chatController = require("../controllers/chatController");
+const chatController = require("../controllers/chatApiController");
 
 router.get("/:chatId", chatController.getChatMessages);
 router.get("/", authMiddleware, chatController.getAllChats);
