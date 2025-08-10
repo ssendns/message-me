@@ -76,7 +76,7 @@ export default function MainPage() {
 
   useEffect(() => {
     if (socket && isReady && currentUserId) {
-      socket.emit("join", currentUserId);
+      socket.emit("join", { userId: currentUserId });
       console.log("joined online room with id:", currentUserId);
 
       return () => {
@@ -154,8 +154,8 @@ export default function MainPage() {
           >
             {selectedChat ? (
               <ChatArea
-                toUsername={selectedChat.username}
-                toId={selectedChat.id}
+                chatId={selectedChat.id}
+                displayName={selectedChat.displayName}
                 currentUserId={currentUserId}
                 onBack={handleBack}
               />
