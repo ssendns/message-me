@@ -19,6 +19,7 @@ model User {
 
 model Chat {
   id           Int               @id @default(autoincrement())
+  title         String            @default("chat") 
   type         ChatType          @default(DIRECT) 
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
