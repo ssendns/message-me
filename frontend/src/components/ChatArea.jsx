@@ -1,36 +1,33 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import ChatBox from "./ChatBox";
+import ImageSendModal from "./ImageSendModal";
 import useChatMessages from "../hooks/useChatMessages";
-import useSocket from "../hooks/useSocket";
 import useSendMessage from "../hooks/useSendMessage";
 import useUploadImage from "../hooks/useUploadImage";
 import { Paperclip } from "lucide-react";
-import ImageSendModal from "./ImageSendModal";
 
-export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
+export default function ChatArea({
+  displayName,
+  chatId,
+  currentUserId,
+  onBack,
+}) {
   const [messageText, setMessageText] = useState("");
   const [previewUrl, setPreviewUrl] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickedFile, setPickedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  const { messages } = useChatMessages(currentUserId, toId);
-  const { socket } = useSocket();
+  const { messages } = useChatMessages({ chatId, currentUserId });
   const { sendMessage } = useSendMessage(currentUserId);
   const { uploadImage, loading, error } = useUploadImage();
 
-  useEffect(() => {
-    if (!toId) return;
-    socket.emit("join_chat", toId.toString());
-    socket.emit("read_messages", { fromId: toId, toId: currentUserId });
-  }, [toId, socket, currentUserId]);
-
   const handleSend = () => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !chatId) return;
 
     sendMessage({
+      chatId,
       text: messageText,
-      toId,
     });
 
     setMessageText("");
@@ -65,15 +62,15 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
   };
 
   const handleModalSend = async (caption) => {
-    if (!pickedFile) return;
+    if (!pickedFile || !chatId) return;
     try {
       const uploaded = await uploadImage(pickedFile);
       if (uploaded?.url) {
         sendMessage({
+          chatId,
           text: caption || " ",
           imageUrl: uploaded.url,
           imagePublicId: uploaded.publicId,
-          toId,
         });
       }
     } finally {
@@ -91,7 +88,7 @@ export default function ChatArea({ toUsername, toId, currentUserId, onBack }) {
           ←
         </button>
         <h1 className="text-lg font-semibold text-primary mx-auto lg:mx-0">
-          {toUsername || "chat"}
+          {displayName || "chat"}
         </h1>
       </div>
 
