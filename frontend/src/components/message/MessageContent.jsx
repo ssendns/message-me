@@ -11,7 +11,9 @@ export default function MessageContent({
   return (
     <div className="break-all max-w-[300px]">
       <div
-        className={`${edited ? "pr-10 pb-1" : "pr-10"} break-words break-all`}
+        className={`${edited ? "pb-1" : "pb-0"} ${
+          isOwn ? "pr-10" : "pr-7"
+        } break-words break-all`}
       >
         {imageUrl && (
           <a href={imageUrl} target="_blank" rel="noreferrer">
