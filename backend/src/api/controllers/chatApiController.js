@@ -1,5 +1,17 @@
 const prisma = require("../../utils/db");
 
+async function ensureMember(chatId, userId) {
+  const chat = await prisma.chat.findFirst({
+    where: { id: chatId, participants: { some: { userId } } },
+    select: { id: true },
+  });
+  if (!chat) {
+    const err = new Error("forbidden");
+    err.status = 403;
+    throw err;
+  }
+}
+
 const getAllChats = async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -64,7 +76,7 @@ const getAllChats = async (req, res) => {
   }
 };
 
-async function getChatMessages(req, res) {
+const getChatMessages = async (req, res) => {
   try {
     const chatId = Number(req.params.chatId);
     if (!chatId) {
@@ -81,9 +93,148 @@ async function getChatMessages(req, res) {
     console.error("getChatMessages failed:", err);
     return res.status(500).json({ error: "failed to fetch messages" });
   }
-}
+};
+
+// body: { type: 'PRIVATE'|'PUBLIC', peerId? (for PRIVATE), title? (for PUBLIC), participantIds? (for PUBLIC) }
+const createChat = async (req, res) => {
+  const userId = Number(req.user.userId);
+  const { type, peerId, title, participantIds } = req.body;
+
+  try {
+    if (type === "PRIVATE") {
+      const u1 = Math.min(userId, Number(peerId));
+      const u2 = Math.max(userId, Number(peerId));
+      if (!u2) return res.status(400).json({ message: "peerId required" });
+
+      let chat = await prisma.chat.findFirst({
+        where: {
+          type: "PRIVATE",
+          participants: { some: { userId: u1 } },
+          AND: { participants: { some: { userId: u2 } } },
+        },
+        select: { id: true },
+      });
+      if (!chat) {
+        chat = await prisma.chat.create({
+          data: {
+            type: "PRIVATE",
+            participants: { create: [{ userId: u1 }, { userId: u2 }] },
+          },
+          select: { id: true },
+        });
+      }
+      return res.json({ id: chat.id });
+    }
+
+    if (type === "PUBLIC") {
+      const ids = Array.from(new Set([userId, ...(participantIds || [])])).map(
+        Number
+      );
+      if (!title) return res.status(400).json({ message: "title required" });
+      const chat = await prisma.chat.create({
+        data: {
+          type: "PUBLIC",
+          title,
+          participants: { create: ids.map((id) => ({ userId: id })) },
+        },
+        select: { id: true },
+      });
+      return res.status(201).json({ id: chat.id });
+    }
+
+    return res.status(400).json({ message: "invalid chat type" });
+  } catch (e) {
+    console.error("createChat failed:", e);
+    res.status(e.status || 500).json({ message: e.message || "failed" });
+  }
+};
+
+const updateChat = async (req, res) => {
+  const userId = Number(req.user.userId);
+  const chatId = Number(req.params.chatId);
+  const { title } = req.body;
+  try {
+    await ensureMember(chatId, userId);
+    const chat = await prisma.chat.update({
+      where: { id: chatId },
+      data: { title: title ?? undefined },
+      select: { id: true, title: true },
+    });
+    res.json(chat);
+  } catch (e) {
+    console.error("updateChat failed:", e);
+    res.status(e.status || 500).json({ message: e.message || "failed" });
+  }
+};
+
+const deleteChat = async (req, res) => {
+  const userId = Number(req.user.userId);
+  const chatId = Number(req.params.chatId);
+  try {
+    await ensureMember(chatId, userId);
+    await prisma.chat.delete({ where: { id: chatId } });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("deleteChat failed:", e);
+    res.status(e.status || 500).json({ message: e.message || "failed" });
+  }
+};
+
+// PUBLIC chat: add/remove participant
+const addParticipant = async (req, res) => {
+  const me = Number(req.user.userId);
+  const chatId = Number(req.params.chatId);
+  const targetId = Number(req.body.userId);
+  try {
+    await ensureMember(chatId, me);
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      select: { type: true },
+    });
+    if (chat.type !== "PUBLIC")
+      return res.status(400).json({ message: "not public chat" });
+
+    await prisma.chatParticipant.upsert({
+      where: { chatId_userId: { chatId, userId: targetId } },
+      create: { chatId, userId: targetId },
+      update: {},
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("addParticipant failed:", e);
+    res.status(e.status || 500).json({ message: e.message || "failed" });
+  }
+};
+
+const removeParticipant = async (req, res) => {
+  const me = Number(req.user.userId);
+  const chatId = Number(req.params.chatId);
+  const targetId = Number(req.params.userId);
+  try {
+    await ensureMember(chatId, me);
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      select: { type: true },
+    });
+    if (chat.type !== "PUBLIC")
+      return res.status(400).json({ message: "not public chat" });
+
+    await prisma.chatParticipant.delete({
+      where: { chatId_userId: { chatId, userId: targetId } },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("removeParticipant failed:", e);
+    res.status(e.status || 500).json({ message: e.message || "failed" });
+  }
+};
 
 module.exports = {
   getAllChats,
   getChatMessages,
+  createChat,
+  updateChat,
+  deleteChat,
+  addParticipant,
+  removeParticipant,
 };
