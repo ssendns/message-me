@@ -1,30 +1,58 @@
-import { useEffect, useState, useCallback } from "react";
-import { getAllUsers, getMessagesWithUser } from "../services/api";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { getAllChats, getAllUsers } from "../services/api";
 import useSocket from "../hooks/useSocket";
 
 const sortByTimeDesc = (list) =>
   [...list].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
 
-export default function useChatList(token, currentUserId, currentChat) {
+export default function useChatList(
+  token,
+  currentUserId,
+  currentChat,
+  searchTerm
+) {
   const [chats, setChats] = useState([]);
+  const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const { socket } = useSocket();
 
-  useEffect(() => {
-    if (!currentChat) return;
+  const fetchChats = useCallback(async () => {
+    if (!token) return;
+    try {
+      const chatList = await getAllChats(token);
+      const mapped = (chatList || []).map((chat) => {
+        const last = chat.lastMessage || null;
+        const others = (chat.participants || []).filter(
+          (p) => p.id !== currentUserId
+        );
+        return {
+          id: chat.id,
+          type: chat.type,
+          participants: chat.participants,
+          displayName:
+            chat.type === "PUBLIC"
+              ? chat.title || others.map((p) => p.username).join(", ")
+              : others.map((p) => p.username).join(", "),
+          lastMessageText: last?.text ?? "",
+          lastMessageImageUrl: last?.imageUrl ?? "",
+          lastMessageId: last?.id ?? null,
+          time: last?.createdAt ?? null,
+          unreadCount: chat.unreadCount ?? 0,
+          hasUnread: (chat.unreadCount ?? 0) > 0,
+        };
+      });
+      setChats(sortByTimeDesc(mapped));
+    } catch (e) {
+      console.error("failed to load chats:", e);
+    }
+  }, [token, currentUserId]);
 
-    setChats((prev) =>
-      prev.map((chat) =>
-        String(chat.id) === String(currentChat.id)
-          ? { ...chat, hasUnread: false, unreadCount: 0 }
-          : chat
-      )
-    );
-  }, [currentChat]);
+  useEffect(() => {
+    fetchChats();
+  }, [fetchChats]);
 
   useEffect(() => {
     if (!socket) return;
-
     socket.emit("get_online_users");
 
     const handleOnlineUsers = (ids) => setOnlineUserIds(ids.map(String));
@@ -44,77 +72,71 @@ export default function useChatList(token, currentUserId, currentChat) {
     };
   }, [socket]);
 
-  const fetchChats = useCallback(async () => {
-    if (!token) return;
-    try {
-      const users = await getAllUsers(token);
-      const chatData = await Promise.all(
-        users
-          .filter((user) => user.id !== currentUserId)
-          .map(async (user) => {
-            const { messages, unreadCount } = await getMessagesWithUser(
-              user.id,
-              token
-            );
-            const lastMessage = messages?.at(-1);
-
-            return {
-              id: user.id,
-              username: user.username,
-              lastMessageContent: lastMessage?.content ?? "",
-              lastMessageImageUrl: lastMessage?.imageUrl ?? "",
-              lastMessageId: lastMessage?.id ?? null,
-              time: lastMessage?.createdAt ?? null,
-              hasUnread: (unreadCount ?? 0) > 0,
-              unreadCount: unreadCount ?? 0,
-            };
-          })
-      );
-      setChats(
-        sortByTimeDesc(
-          chatData.filter(
-            (chat) => chat.lastMessageContent || chat.lastMessageImageUrl
-          )
-        )
-      );
-    } catch (err) {
-      console.error("failed to load chats:", err);
-    }
-  }, [token, currentUserId]);
-
   useEffect(() => {
-    fetchChats();
-  }, [fetchChats]);
+    let ignore = false;
+    const run = async () => {
+      const s = (searchTerm || "").trim().toLowerCase();
+      if (!token || !s) {
+        setSuggestedUsers([]);
+        return;
+      }
+      try {
+        const all = await getAllUsers(token);
+        const chattedIds = new Set(
+          chats.flatMap((c) => c.participants?.map((p) => p.id) || [])
+        );
+        const items = all
+          .filter((u) => u.id !== currentUserId)
+          .filter((u) => !chattedIds.has(u.id))
+          .filter((u) => (u.username || "").toLowerCase().includes(s))
+          .map((u) => ({
+            id: `user-${u.id}`,
+            isNew: true,
+            displayName: u.username,
+            participants: [{ id: u.id, username: u.username }],
+          }));
+        if (!ignore) setSuggestedUsers(items);
+      } catch (e) {
+        console.error("failed to load users:", e);
+        if (!ignore) setSuggestedUsers([]);
+      }
+    };
+    run();
+    return () => {
+      ignore = true;
+    };
+  }, [token, searchTerm, currentUserId, chats]);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleReceive = ({
+      chatId,
       fromId,
-      toId,
-      content,
+      text,
       imageUrl,
       createdAt,
       id,
     }) => {
-      const otherUserId = fromId === currentUserId ? toId : fromId;
       const isOwn = fromId === currentUserId;
-      const isOpen = String(otherUserId) === String(currentChat?.id);
+      const isOpen = String(chatId) === String(currentChat?.id);
 
       setChats((prev) =>
         sortByTimeDesc(
           prev.map((chat) =>
-            String(chat.id) === String(otherUserId)
+            String(chat.id) === String(chatId)
               ? {
                   ...chat,
-                  lastMessageContent: content ?? "",
+                  lastMessageText: text ?? "",
                   lastMessageImageUrl: imageUrl ?? null,
                   lastMessageId: id,
                   time: createdAt || new Date().toISOString(),
-                  hasUnread: !isOwn && !isOpen,
                   unreadCount: isOwn
                     ? chat.unreadCount || 0
+                    : isOpen
+                    ? 0
                     : (chat.unreadCount || 0) + 1,
+                  hasUnread: isOwn ? chat.hasUnread : !isOpen,
                 }
               : chat
           )
@@ -122,57 +144,53 @@ export default function useChatList(token, currentUserId, currentChat) {
       );
     };
 
-    const handleDelete = async ({ messageId, chatId }) => {
+    const handleDeleted = ({
+      id: messageId,
+      chatId,
+      nextLast,
+      unreadCount,
+    }) => {
       setChats((prev) =>
-        prev.map((chat) =>
-          String(chat.id) === String(chatId) && chat.lastMessageId === messageId
-            ? {
-                ...chat,
-                lastMessageContent: "",
-                lastMessageImageUrl: null,
-                lastMessageId: null,
-                time: null,
-                hasUnread: false,
-              }
-            : chat
+        sortByTimeDesc(
+          prev.map((chat) => {
+            if (String(chat.id) !== String(chatId)) return chat;
+            const isLastDeleted = chat.lastMessageId === messageId;
+
+            const updated = isLastDeleted
+              ? nextLast
+                ? {
+                    ...chat,
+                    lastMessageText: nextLast.text ?? "",
+                    lastMessageImageUrl: nextLast.imageUrl ?? null,
+                    lastMessageId: nextLast.id ?? null,
+                    time: nextLast.createdAt ?? null,
+                  }
+                : {
+                    ...chat,
+                    lastMessageText: "",
+                    lastMessageImageUrl: null,
+                    lastMessageId: null,
+                    time: null,
+                  }
+              : chat;
+
+            const uc = unreadCount ?? updated.unreadCount ?? 0;
+            return { ...updated, unreadCount: uc, hasUnread: uc > 0 };
+          })
         )
       );
-      try {
-        const { messages } = await getMessagesWithUser(chatId, token);
-        const last = messages.at(-1);
-
-        setChats((prev) =>
-          prev
-            .map((chat) =>
-              String(chat.id) === String(chatId)
-                ? last
-                  ? {
-                      ...chat,
-                      lastMessageContent: last.content ?? "",
-                      lastMessageImageUrl: last.imageUrl ?? null,
-                      lastMessageId: last.id,
-                      time: last.createdAt ?? null,
-                    }
-                  : {
-                      ...chat,
-                      lastMessageContent: "",
-                      lastMessageImageUrl: null,
-                      lastMessageId: null,
-                      time: null,
-                    }
-                : chat
-            )
-            .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
-        );
-      } catch (err) {
-        console.error("error fetching messages on delete:", err);
-      }
     };
 
-    const handleEdit = ({ fromId, toId, content, imageUrl, createdAt, id }) => {
-      const otherUserId = fromId === currentUserId ? toId : fromId;
+    const handleEdited = ({
+      chatId,
+      id,
+      text,
+      imageUrl,
+      createdAt,
+      fromId,
+    }) => {
       const isOwn = fromId === currentUserId;
-      const isOpen = String(otherUserId) === String(currentChat?.id);
+      const isOpen = String(chatId) === String(currentChat?.id);
 
       setChats((prev) =>
         sortByTimeDesc(
@@ -180,10 +198,10 @@ export default function useChatList(token, currentUserId, currentChat) {
             chat.lastMessageId === id
               ? {
                   ...chat,
-                  lastMessageContent: content ?? "",
+                  lastMessageText: text ?? "",
                   lastMessageImageUrl: imageUrl ?? null,
                   time: createdAt || new Date().toISOString(),
-                  hasUnread: !isOwn && !isOpen,
+                  hasUnread: isOwn ? chat.hasUnread : !isOpen,
                 }
               : chat
           )
@@ -191,16 +209,57 @@ export default function useChatList(token, currentUserId, currentChat) {
       );
     };
 
+    const handleMessagesRead = ({ chatId, userId: readerId }) => {
+      if (readerId === currentUserId) {
+        setChats((prev) =>
+          prev.map((c) =>
+            String(c.id) === String(chatId)
+              ? { ...c, unreadCount: 0, hasUnread: false }
+              : c
+          )
+        );
+      }
+    };
+
     socket.on("receive_message", handleReceive);
-    socket.on("delete_message", handleDelete);
-    socket.on("receive_edited_message", handleEdit);
+    socket.on("message_deleted", handleDeleted);
+    socket.on("receive_edited_message", handleEdited);
+    socket.on("messages_read", handleMessagesRead);
 
     return () => {
       socket.off("receive_message", handleReceive);
-      socket.off("delete_message", handleDelete);
-      socket.off("receive_edited_message", handleEdit);
+      socket.off("message_deleted", handleDeleted);
+      socket.off("receive_edited_message", handleEdited);
+      socket.off("messages_read", handleMessagesRead);
     };
-  }, [socket, token, currentUserId, currentChat?.id]);
+  }, [socket, currentUserId, currentChat?.id]);
 
-  return { chats, onlineUserIds, refreshChats: fetchChats };
+  const listForUI = useMemo(() => {
+    const s = (searchTerm || "").toLowerCase().trim();
+    const base = !s
+      ? chats
+      : chats.filter((c) =>
+          (c.displayName || "chat").toLowerCase().includes(s)
+        );
+    return sortByTimeDesc(base).concat(s ? suggestedUsers : []);
+  }, [chats, suggestedUsers, searchTerm]);
+
+  const markChatRead = useCallback((chatId) => {
+    setChats((prev) => {
+      let changed = false;
+      const next = prev.map((c) => {
+        if (String(c.id) !== String(chatId)) return c;
+        changed = true;
+        return { ...c, unreadCount: 0, hasUnread: false };
+      });
+      return changed ? next : prev;
+    });
+  }, []);
+
+  return {
+    chats: listForUI,
+    onlineUserIds,
+    refreshChats: fetchChats,
+    markChatRead,
+  };
 }

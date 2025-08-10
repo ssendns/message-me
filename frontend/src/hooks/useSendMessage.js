@@ -1,17 +1,18 @@
 import useSocket from "./useSocket";
 
-export default function useSendMessage(currentUserId) {
+export default function useSendMessage() {
   const { socket } = useSocket();
 
-  const sendMessage = ({ text, imageUrl, imagePublicId, toId }) => {
-    if (!text.trim() && !imageUrl) return;
+  const sendMessage = ({ chatId, text, imageUrl, imagePublicId }) => {
+    if (!socket) return;
+    const clean = (text ?? "").trim();
+    if (!clean && !imageUrl) return;
 
     socket.emit("send_message", {
-      from: currentUserId,
-      to: toId,
-      text,
-      imageUrl,
-      imagePublicId,
+      chatId,
+      text: clean,
+      imageUrl: imageUrl || null,
+      imagePublicId: imagePublicId || null,
     });
   };
 

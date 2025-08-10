@@ -1,39 +1,45 @@
 import { useEffect, useState } from "react";
-import { getMessagesWithUser } from "../services/api";
+import { getChatMessages } from "../services/api";
 import useSocket from "./useSocket";
 
-export default function useChatMessages(currentUserId, toId) {
+export default function useChatMessages({ chatId, currentUserId }) {
   const [messages, setMessages] = useState([]);
   const { socket } = useSocket();
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    if (!toId || !token) return;
+    if (!chatId || !token) return;
 
     const fetchMessages = async () => {
       try {
-        const { messages } = await getMessagesWithUser(toId, token);
-        setMessages(messages || []);
+        const data = await getChatMessages({ chatId, token });
+        setMessages(Array.isArray(data.messages) ? data.messages : []);
       } catch (err) {
         console.error("failed to fetch messages:", err);
       }
     };
 
     fetchMessages();
-  }, [toId, token]);
+  }, [chatId, token]);
 
   useEffect(() => {
-    if (!toId || !currentUserId || !socket) return;
+    if (!chatId || !currentUserId || !socket) return;
 
-    socket.emit("join", currentUserId);
-    socket.emit("join_chat", toId.toString());
+    socket.emit("join_chat", { chatId });
 
     const handleReceiveMessage = (message) => {
-      if (message.fromId === toId || message.toId === toId) {
-        setMessages((prev) => [...prev, message]);
-        if (message.fromId === toId && message.toId === currentUserId) {
-          socket.emit("read_messages", { fromId: toId, toId: currentUserId });
-        }
+      if (message.chatId !== chatId) return;
+
+      setMessages((prev) => [...prev, message]);
+      if (message.fromId !== currentUserId && !message.read) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.chatId === chatId && m.fromId !== currentUserId
+              ? { ...m, read: true }
+              : m
+          )
+        );
+        socket.emit("read_messages", { chatId });
       }
     };
 
@@ -41,18 +47,29 @@ export default function useChatMessages(currentUserId, toId) {
 
     return () => {
       socket.off("receive_message", handleReceiveMessage);
-      socket.emit("leave_chat", toId.toString());
+      socket.emit("leave_chat", chatId);
     };
-  }, [socket, currentUserId, toId]);
+  }, [socket, currentUserId, chatId]);
 
   useEffect(() => {
-    if (!socket || !toId || !currentUserId) return;
+    if (!socket || !chatId || !currentUserId) return;
 
-    const handleMessagesRead = ({ fromId, toId: readerId }) => {
-      if (readerId === toId && fromId === currentUserId) {
+    const handleMessagesRead = ({ chatId: cid, readerId }) => {
+      if (cid !== chatId) return;
+      if (readerId !== currentUserId) {
         setMessages((prev) =>
           prev.map((m) =>
-            m.fromId === currentUserId ? { ...m, read: true } : m
+            m.chatId === chatId && m.fromId === currentUserId
+              ? { ...m, read: true }
+              : m
+          )
+        );
+      } else {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.chatId === chatId && m.fromId !== currentUserId
+              ? { ...m, read: true }
+              : m
           )
         );
       }
@@ -60,21 +77,24 @@ export default function useChatMessages(currentUserId, toId) {
 
     socket.on("messages_read", handleMessagesRead);
     return () => socket.off("messages_read", handleMessagesRead);
-  }, [socket, currentUserId, toId]);
+  }, [socket, currentUserId, chatId]);
 
   useEffect(() => {
     if (!socket) return;
 
-    const handleEditedMessage = ({ id, content, imageUrl }) => {
+    const handleEditedMessage = ({
+      id,
+      chatId: cid,
+      text,
+      imageUrl,
+      imagePublicId,
+      edited,
+    }) => {
+      if (cid !== chatId) return;
       setMessages((prev) =>
         prev.map((m) =>
           m.id === id
-            ? {
-                ...m,
-                content: content,
-                imageUrl: imageUrl,
-                edited: true,
-              }
+            ? { ...m, text, imageUrl, imagePublicId, edited: Boolean(edited) }
             : m
         )
       );
@@ -82,50 +102,36 @@ export default function useChatMessages(currentUserId, toId) {
 
     socket.on("receive_edited_message", handleEditedMessage);
     return () => socket.off("receive_edited_message", handleEditedMessage);
-  }, [socket]);
+  }, [socket, chatId]);
 
   useEffect(() => {
     if (!socket) return;
 
-    const handleDeletedMessage = ({ messageId }) => {
-      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    const handleDeletedMessage = ({ id, chatId: cid }) => {
+      if (cid !== chatId) return;
+      setMessages((prev) => prev.filter((m) => m.id !== id));
     };
 
-    socket.on("delete_message", handleDeletedMessage);
-    return () => socket.off("delete_message", handleDeletedMessage);
-  }, [socket]);
+    socket.on("message_deleted", handleDeletedMessage);
+    return () => socket.off("message_deleted", handleDeletedMessage);
+  }, [socket, chatId]);
 
   useEffect(() => {
-    if (!socket || !toId || !currentUserId || messages.length === 0) return;
-
-    const hasIncomingUnread = messages.some(
-      (m) => m.fromId === toId && m.hasUnread
+    if (!socket || !chatId || !currentUserId || messages.length === 0) return;
+    const hasUnreadIncoming = messages.some(
+      (m) => m.chatId === chatId && m.fromId !== currentUserId && !m.read
     );
-    if (!hasIncomingUnread) return;
-
-    socket.emit("read_messages", { fromId: toId, toId: currentUserId });
-
-    setMessages((prev) =>
-      prev.map((m) => (m.fromId === toId ? { ...m, hasUnread: false } : m))
-    );
-  }, [socket, currentUserId, toId, messages, messages.length]);
-
-  useEffect(() => {
-    if (!socket || !toId || !currentUserId) return;
-
-    const handleMessagesRead = ({ fromId, toId: readerId }) => {
-      if (fromId === currentUserId && readerId === toId) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.fromId === currentUserId ? { ...m, hasUnread: false } : m
-          )
-        );
-      }
-    };
-
-    socket.on("messages_read", handleMessagesRead);
-    return () => socket.off("messages_read", handleMessagesRead);
-  }, [socket, currentUserId, toId]);
+    if (hasUnreadIncoming) {
+      socket.emit("read_messages", { chatId });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.chatId === chatId && m.fromId !== currentUserId
+            ? { ...m, read: true }
+            : m
+        )
+      );
+    }
+  }, [socket, chatId, currentUserId, messages]);
 
   return { messages, setMessages };
 }
