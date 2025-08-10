@@ -12,21 +12,59 @@ model User {
   id        Int       @id @default(autoincrement())
   username  String    @unique
   password  String
-  messagesSent     Message[] @relation("MessagesSent")
-  messagesReceived Message[] @relation("MessagesReceived")
+  messagesSent Message[]   @relation("FromUser")
+  participant ChatParticipant[]
+  createdAt    DateTime          @default(now())
+}
+
+model Chat {
+  id           Int               @id @default(autoincrement())
+  type         ChatType          @default(DIRECT) 
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  participants ChatParticipant[] 
+  messages     Message[]  
+}
+
+enum ChatType {
+  DIRECT
+  GROUP
+}
+
+model ChatParticipant {
+  id         Int      @id @default(autoincrement())
+  chatId     Int
+  userId     Int
+  role       ParticipantRole @default(MEMBER)
+  lastReadAt DateTime?
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+}
+
+enum ParticipantRole {
+  OWNER
+  ADMIN
+  MEMBER
 }
 
 model Message {
   id        Int      @id @default(autoincrement())
-  from      User?    @relation("MessagesSent", fields: [fromId], references: [id], onDelete: SetNull)
-  fromId    Int?
-  to        User?    @relation("MessagesReceived", fields: [toId], references: [id], onDelete: SetNull)
-  toId      Int?
-  content   String    @default("")
-  imageUrl  String? 
+  chatId    Int
+  fromId    Int
+  text   String   @default("")
+  imageUrl  String?
   imagePublicId String?
+  edited    Boolean  @default(false)
+  read      Boolean   @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime? @updatedAt
-  edited Boolean @default(false)
-  read  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  from User @relation("FromUser", fields: [fromId], references: [id])
+
+  @@index([chatId, createdAt])
+  @@index([fromId, createdAt])
 }
