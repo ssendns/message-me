@@ -1,0 +1,11 @@
+const express = require("express");
+const router = express.Router();
+const authMiddleware = require("../middlewares/authMiddleware");
+const messageController = require("../controllers/messageApiController");
+
+router.get("/", authMiddleware, messageController.getUserMessages);
+router.post("/", authMiddleware, messageController.createMessage);
+router.patch("/:messageId", authMiddleware, messageController.updateMessage);
+router.delete("/:messageId", authMiddleware, messageController.deleteMessage);
+
+module.exports = router;
