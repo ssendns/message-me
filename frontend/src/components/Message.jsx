@@ -9,14 +9,17 @@ import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 
 export default function Message({ message, currentUserId }) {
   const isOwn = message.fromId === currentUserId;
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(message.content || "");
-  const [editImageUrl, setEditImageUrl] = useState(message.imageUrl || null);
-  const { socket, isReady } = useSocket();
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(message.text || "");
+  const [editImageUrl, setEditImageUrl] = useState(message.imageUrl || null);
+  const [editImagePublicId, setEditImagePublicId] = useState(
+    message.imagePublicId || null
+  );
+
+  const { socket, isReady } = useSocket();
   const fileInputRef = useRef(null);
   const { uploadImage, loading: uploading } = useUploadImage();
-
   const { messageRef, menuOpen, shouldOpenUpwards, openMenu, closeMenu } =
     useMessageMenu();
 
@@ -31,15 +34,14 @@ export default function Message({ message, currentUserId }) {
     if (!isReady) return;
     socket.emit("delete_message", {
       id: message.id,
-      userId: currentUserId,
-      toId: message.toId,
+      chatId: message.chatId,
       fromId: message.fromId,
     });
   };
 
   const handleEdit = () => {
     setIsEditing(true);
-    setEditText(message.content || "");
+    setEditText(message.text || "");
     setEditImageUrl(message.imageUrl || null);
     closeMenu();
   };
@@ -51,17 +53,25 @@ export default function Message({ message, currentUserId }) {
     e.target.value = "";
     if (!file) return;
     const uploaded = await uploadImage(file);
-    if (uploaded?.url) setEditImageUrl(uploaded.url);
+    if (uploaded?.url) {
+      setEditImageUrl(uploaded.url);
+      setEditImagePublicId(uploaded.publicId || null);
+    }
   };
 
-  const removeImage = () => setEditImageUrl(null);
+  const removeImage = () => {
+    setEditImageUrl(null);
+    setEditImagePublicId(null);
+  };
 
   const handleEditSubmit = () => {
     socket.emit("edit_message", {
       id: message.id,
-      userId: currentUserId,
+      chatId: message.chatId,
+      fromId: message.fromId,
       newText: editText,
       newImageUrl: editImageUrl,
+      newImagePublicId: editImagePublicId,
     });
     setIsEditing(false);
   };
@@ -72,6 +82,7 @@ export default function Message({ message, currentUserId }) {
         ref={messageRef}
         onContextMenu={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           openMenu();
         }}
         className={`relative px-4 py-2 max-w-xs break-words rounded-xl ${
@@ -134,7 +145,7 @@ export default function Message({ message, currentUserId }) {
           </div>
         ) : (
           <MessageContent
-            content={message.content}
+            text={message.text}
             imageUrl={message.imageUrl}
             time={time}
             edited={message.edited}
@@ -150,7 +161,7 @@ export default function Message({ message, currentUserId }) {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onCopy={() => {
-              navigator.clipboard.writeText(message.content);
+              navigator.clipboard.writeText(message.text);
               closeMenu();
             }}
           />
