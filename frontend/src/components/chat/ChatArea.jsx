@@ -24,6 +24,9 @@ export default function ChatArea({
   const { sendMessage } = useSendMessage(currentUserId);
   const { uploadImage, loading, error } = useUploadImage();
 
+  const isGroup = String(type || "").toUpperCase() === "GROUP";
+  const membersCount = participants.length;
+
   const handleSend = () => {
     if (!messageText.trim() || !chatId) return;
 
@@ -82,16 +85,25 @@ export default function ChatArea({
 
   return (
     <div className="flex flex-col flex-1 h-full">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between px-6 py-3 mb-1 border-b border-gray-200 bg-white shadow-sm">
         <button
           onClick={onBack}
           className="lg:hidden text-muted hover:text-primary"
         >
           ←
         </button>
-        <h1 className="text-lg font-semibold text-primary mx-auto lg:mx-0">
-          {displayName || "chat"}
-        </h1>
+        <div className="mx-auto lg:mx-0 flex flex-col items-center lg:items-start">
+          <h1 className="text-lg font-semibold text-primary">
+            {displayName || "chat"}
+          </h1>
+          {isGroup && (
+            <span className="text-xs text-gray-500">
+              {membersCount} {membersCount === 1 ? "member" : "members"}
+            </span>
+          )}
+        </div>
+
+        <div className="w-4" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 bg-gray-50">
