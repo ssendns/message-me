@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
-import useSocket from "../hooks/useSocket";
+import useSocket from "../../hooks/useSocket";
 import MessageMenu from "./MessageMenu";
 import EditInput from "./EditInput";
 import MessageContent from "./MessageContent";
-import useMessageMenu from "../hooks/useMessageMenu";
-import useUploadImage from "../hooks/useUploadImage";
+import useMessageMenu from "../../hooks/useMessageMenu";
+import useUploadImage from "../../hooks/useUploadImage";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 
 export default function Message({ message, currentUserId }) {

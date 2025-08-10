@@ -1,9 +1,9 @@
 import { useState, useRef } from "react";
 import ChatBox from "./ChatBox";
 import ImageSendModal from "./ImageSendModal";
-import useChatMessages from "../hooks/useChatMessages";
-import useSendMessage from "../hooks/useSendMessage";
-import useUploadImage from "../hooks/useUploadImage";
+import useChatMessages from "../../hooks/useChatMessages";
+import useSendMessage from "../../hooks/useSendMessage";
+import useUploadImage from "../../hooks/useUploadImage";
 import { Paperclip } from "lucide-react";
 
 export default function ChatArea({

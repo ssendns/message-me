@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import Message from "./Message";
+import Message from "../message/Message";
 import DateLabel from "./DateLabel";
-import { formatDate } from "../utils/formatDate";
+import { formatDate } from "../../utils/formatDate";
 
 export default function ChatBox({ messages, currentUserId }) {
   const containerRef = useRef(null);

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import ChatList from "../components/ChatList";
-import ChatArea from "../components/ChatArea";
+import ChatList from "../components/chatList/ChatList";
+import ChatArea from "../components/chat/ChatArea";
 import Sidebar from "../components/Sidebar";
 import WelcomeModal from "../components/WelcomeModal";
 import useSocket from "../hooks/useSocket";

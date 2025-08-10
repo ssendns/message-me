@@ -1,6 +1,6 @@
-import useChatList from "../hooks/useChatList";
+import useChatList from "../../hooks/useChatList";
 import ChatListItem from "./ChatListItem";
-import useSocket from "../hooks/useSocket";
+import useSocket from "../../hooks/useSocket";
 import { useState, useEffect, useRef } from "react";
 
 export default function ChatList({
