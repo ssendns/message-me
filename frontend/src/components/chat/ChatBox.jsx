@@ -30,18 +30,21 @@ export default function ChatBox({
 
     let lastDateLabel = null;
 
-    return messages.map((message) => {
+    return messages.map((message, idx) => {
       const dateLabel = message.createdAt
         ? formatDate(message.createdAt)
         : null;
       const showDate = dateLabel && dateLabel !== lastDateLabel;
       if (showDate) lastDateLabel = dateLabel;
 
+      const prev = messages[idx - 1];
       const isOwn = message.fromId === currentUserId;
-      const authorName =
-        !isOwn && isGroup
-          ? nameById.get(String(message.fromId)) || "member"
-          : null;
+      const showAuthorHeader =
+        isGroup && !isOwn && (!prev || prev.fromId !== message.fromId);
+
+      const authorName = showAuthorHeader
+        ? nameById.get(String(message.fromId)) || "user"
+        : null;
 
       return (
         <div key={message.id}>
