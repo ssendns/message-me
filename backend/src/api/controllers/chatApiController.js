@@ -1,33 +1,15 @@
-const prisma = require("../../utils/db");
-
-async function ensureMember(chatId, userId) {
-  const chat = await prisma.chat.findFirst({
-    where: { id: chatId, participants: { some: { userId } } },
-    select: { id: true },
-  });
-  if (!chat) {
-    const err = new Error("forbidden");
-    err.status = 403;
-    throw err;
-  }
-}
+const prisma = require("../../utils/prisma");
+const { ensureMember, privateKey } = require("../../utils/chatUtils");
 
 const getAllChats = async (req, res) => {
-  const userId = req.user.userId;
+  const userId = Number(req.user.userId);
+
   try {
     const chats = await prisma.chat.findMany({
-      where: {
-        participants: {
-          some: { userId },
-        },
-      },
+      where: { participants: { some: { userId } } },
       include: {
         participants: {
-          include: {
-            user: {
-              select: { id: true, username: true },
-            },
-          },
+          include: { user: { select: { id: true, username: true } } },
         },
         messages: {
           orderBy: { createdAt: "desc" },
@@ -45,35 +27,40 @@ const getAllChats = async (req, res) => {
       },
     });
 
-    const result = await Promise.all(
-      chats.map(async (chat) => {
-        const lastMessage = chat.messages[0] || null;
+    const chatIds = chats.map((c) => c.id);
 
-        const unreadCount = await prisma.message.count({
-          where: {
-            chatId: chat.id,
-            read: false,
-            fromId: { not: userId },
-          },
-        });
+    const unreadByChat = await prisma.message.groupBy({
+      by: ["chatId"],
+      where: { chatId: { in: chatIds }, read: false, fromId: { not: userId } },
+      _count: { _all: true },
+    });
+    const unreadMap = new Map(
+      unreadByChat.map((r) => [r.chatId, r._count._all])
+    );
 
-        return {
-          id: chat.id,
-          type: chat.type,
-          title: chat.title,
-          participants: chat.participants.map((p) => ({
-            id: p.user.id,
-            username: p.user.username,
-          })),
-          lastMessage,
-          unreadCount,
-        };
-      })
+    const result = chats.map((chat) => {
+      const lastMessage = chat.messages[0] || null;
+      return {
+        id: chat.id,
+        type: chat.type,
+        title: chat.title,
+        participants: chat.participants.map((p) => ({
+          id: p.user.id,
+          username: p.user.username,
+        })),
+        lastMessage,
+        unreadCount: unreadMap.get(chat.id) || 0,
+      };
+    });
+
+    result.sort(
+      (a, b) =>
+        new Date(b.lastMessage?.createdAt || 0) -
+        new Date(a.lastMessage?.createdAt || 0)
     );
 
     res.json(result);
   } catch (err) {
-    console.error("getAllChats failed:", err);
     res.status(500).json({ message: "failed to load chats" });
   }
 };
@@ -81,9 +68,12 @@ const getAllChats = async (req, res) => {
 const getChatMessages = async (req, res) => {
   try {
     const chatId = Number(req.params.chatId);
+    const userId = Number(req.user.userId);
     if (!chatId) {
-      return res.status(400).json({ error: "invalid chatId" });
+      return res.status(400).json({ message: "invalid chatId" });
     }
+
+    await ensureMember(chatId, userId);
 
     const messages = await prisma.message.findMany({
       where: { chatId },
@@ -92,8 +82,7 @@ const getChatMessages = async (req, res) => {
 
     return res.json({ messages });
   } catch (err) {
-    console.error("getChatMessages failed:", err);
-    return res.status(500).json({ error: "failed to fetch messages" });
+    return res.status(500).json({ message: "failed to fetch messages" });
   }
 };
 
@@ -104,10 +93,16 @@ const createChat = async (req, res) => {
 
   try {
     if (type === "DIRECT") {
-      const u1 = Math.min(userId, Number(peerId));
-      const u2 = Math.max(userId, Number(peerId));
-      if (!u2) return res.status(400).json({ message: "peerId required" });
+      const pid = Number(peerId);
+      if (!pid) return res.status(400).json({ message: "peerId required" });
+      if (pid === userId)
+        return res
+          .status(400)
+          .json({ message: "cannot create direct chat with yourself" });
 
+      const [u1, u2] = privateKey(userId, pid).split(":").map(Number);
+
+      let created = false;
       let chat = await prisma.chat.findFirst({
         where: {
           type: "DIRECT",
@@ -117,6 +112,7 @@ const createChat = async (req, res) => {
         select: { id: true },
       });
       if (!chat) {
+        created = true;
         chat = await prisma.chat.create({
           data: {
             type: "DIRECT",
@@ -125,18 +121,24 @@ const createChat = async (req, res) => {
           select: { id: true },
         });
       }
-      return res.json({ id: chat.id });
+      return res.status(created ? 201 : 200).json({ id: chat.id });
     }
 
     if (type === "GROUP") {
       const ids = Array.from(new Set([userId, ...(participantIds || [])])).map(
         Number
       );
-      if (!title) return res.status(400).json({ message: "title required" });
+      if (!title || !title.trim())
+        return res.status(400).json({ message: "title required" });
+      if (ids.length < 2)
+        return res
+          .status(400)
+          .json({ message: "group must have at least 2 participants" });
+
       const chat = await prisma.chat.create({
         data: {
           type: "GROUP",
-          title,
+          title: title.trim(),
           participants: { create: ids.map((id) => ({ userId: id })) },
         },
         select: { id: true },
@@ -145,9 +147,8 @@ const createChat = async (req, res) => {
     }
 
     return res.status(400).json({ message: "invalid chat type" });
-  } catch (e) {
-    console.error("createChat failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "failed to create chat" });
   }
 };
 
@@ -157,15 +158,24 @@ const updateChat = async (req, res) => {
   const { title } = req.body;
   try {
     await ensureMember(chatId, userId);
-    const chat = await prisma.chat.update({
+    const chat = await prisma.chat.findUnique({
       where: { id: chatId },
-      data: { title: title ?? undefined },
+      select: { type: true },
+    });
+    if (!chat) return res.status(404).json({ message: "chat not found" });
+    if (chat.type !== "GROUP")
+      return res
+        .status(400)
+        .json({ message: "only group chats can be renamed" });
+
+    const updated = await prisma.chat.update({
+      where: { id: chatId },
+      data: { title: title?.trim() || null },
       select: { id: true, title: true },
     });
-    res.json(chat);
-  } catch (e) {
-    console.error("updateChat failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: err.message || "failed to update chat" });
   }
 };
 
@@ -177,7 +187,6 @@ const deleteChat = async (req, res) => {
     await prisma.chat.delete({ where: { id: chatId } });
     res.json({ ok: true });
   } catch (e) {
-    console.error("deleteChat failed:", e);
     res.status(e.status || 500).json({ message: e.message || "failed" });
   }
 };
@@ -193,8 +202,9 @@ const addParticipant = async (req, res) => {
       where: { id: chatId },
       select: { type: true },
     });
-    if (chat.type !== "PUBLIC")
-      return res.status(400).json({ message: "not public chat" });
+    if (!chat) return res.status(404).json({ message: "chat not found" });
+    if (chat.type !== "GROUP")
+      return res.status(400).json({ message: "not group chat" });
 
     await prisma.chatParticipant.upsert({
       where: { chatId_userId: { chatId, userId: targetId } },
@@ -203,8 +213,7 @@ const addParticipant = async (req, res) => {
     });
     res.json({ ok: true });
   } catch (e) {
-    console.error("addParticipant failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+    res.status(500).json({ message: e.message || "failed to add participant" });
   }
 };
 
@@ -218,16 +227,18 @@ const removeParticipant = async (req, res) => {
       where: { id: chatId },
       select: { type: true },
     });
-    if (chat.type !== "PUBLIC")
-      return res.status(400).json({ message: "not public chat" });
+    if (!chat) return res.status(404).json({ message: "chat not found" });
+    if (chat.type !== "GROUP")
+      return res.status(400).json({ message: "not group chat" });
 
     await prisma.chatParticipant.delete({
       where: { chatId_userId: { chatId, userId: targetId } },
     });
     res.json({ ok: true });
   } catch (e) {
-    console.error("removeParticipant failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+    res
+      .status(500)
+      .json({ message: e.message || "failed to remove participant" });
   }
 };
 
