@@ -1,158 +1,150 @@
-const prisma = require("../../utils/db");
+const prisma = require("../../utils/prisma");
 const cloudinary = require("../../../cloudinary");
+const { ensureMember } = require("../../utils/chatUtils");
+const {
+  sanitizeText,
+  getOwnedMessageOrThrow,
+} = require("../../utils/messageUtils");
 
-async function createMessage(chatId, fromId, text, imageUrl, imagePublicId) {
-  if ((!text || !text.trim()) && !imageUrl) {
+const createMessage = async (chatId, fromId, text, imageUrl, imagePublicId) => {
+  await ensureMember(chatId, fromId);
+
+  const cleanText = sanitizeText(text);
+  const hasText = cleanText.length > 0;
+  const hasImage = Boolean(imageUrl);
+  if (!hasText && !hasImage) {
     throw new Error("message must have text or image");
-  }
-  const chatExists = await prisma.chat.findUnique({ where: { id: chatId } });
-  const senderExists = await prisma.user.findUnique({ where: { id: fromId } });
-
-  if (!chatExists || !senderExists) {
-    throw new Error("user or receiver not found");
   }
 
   const message = await prisma.message.create({
     data: {
       chatId,
       fromId,
-      text: text?.trim() || "",
-      imageUrl: imageUrl || null,
+      text: hasText ? cleanText : "",
+      imageUrl: hasImage ? imageUrl : null,
       imagePublicId: imagePublicId || null,
       read: false,
     },
+    select: {
+      id: true,
+      chatId: true,
+      fromId: true,
+      text: true,
+      imageUrl: true,
+      imagePublicId: true,
+      createdAt: true,
+      edited: true,
+      read: true,
+    },
   });
 
-  const fullMessage = {
-    id: message.id,
-    chatId,
-    fromId: message.fromId,
-    text: message.text,
-    imageUrl: message.imageUrl,
-    imagePublicId: message.imagePublicId,
-    createdAt: message.createdAt,
-    read: message.read,
-    edited: message.edited,
-  };
+  return message;
+};
 
-  return fullMessage;
-}
-
-async function editMessage(
+const editMessage = async (
   id,
   chatId,
   fromId,
   newText,
   newImageUrl,
   newImagePublicId
-) {
-  const chatExists = await prisma.chat.findUnique({ where: { id: chatId } });
-  const senderExists = await prisma.user.findUnique({ where: { id: fromId } });
+) => {
+  await ensureMember(chatId, fromId);
 
-  if (!chatExists || !senderExists) {
-    throw new Error("user or receiver not found");
-  }
-  if ((!newText || !newText.trim()) && !newImageUrl) {
+  const existing = await getOwnedMessageOrThrow(id, chatId, fromId);
+
+  const nextTextDefined = typeof newText !== "undefined";
+  const nextImageDefined = typeof newImageUrl !== "undefined";
+  const cleanText = nextTextDefined ? sanitizeText(newText) : undefined;
+
+  const finalText = nextTextDefined ? cleanText : existing.text ?? "";
+  const finalImageUrl = nextImageDefined
+    ? newImageUrl || null
+    : existing.imageUrl || null;
+
+  if (!finalText && !finalImageUrl) {
     throw new Error("message must have text or image");
   }
 
-  try {
-    const existing = await prisma.message.findUnique({ where: { id } });
-    if (!existing || existing.fromId !== fromId || existing.chatId !== chatId) {
-      throw new Error("you can not edit this message");
-    }
-
-    const replacingImage = typeof newImageUrl !== "undefined";
-    if (
-      replacingImage &&
-      existing.imagePublicId &&
-      existing.imagePublicId !== newImagePublicId
-    ) {
-      try {
-        await cloudinary.uploader.destroy(existing.imagePublicId);
-      } catch (err) {
-        console.warn("cloudinary destroy on edit failed:", err);
-      }
-    }
-
-    const updated = await prisma.message.update({
-      where: { id },
-      data: {
-        text: typeof newText === "string" ? newText.trim() : existing.text,
-        imageUrl:
-          typeof newImageUrl !== "undefined" ? newImageUrl : existing.imageUrl,
-        imagePublicId:
-          typeof newImagePublicId !== "undefined"
-            ? newImagePublicId
-            : existing.imagePublicId,
-        edited: true,
-      },
-    });
-
-    const payload = {
-      id: updated.id,
-      chatId: updated.chatId,
-      fromId: updated.fromId,
-      text: updated.text,
-      imageUrl: updated.imageUrl,
-      imagePublicId: updated.imagePublicId,
-      updatedAt: updated.updatedAt,
-      edited: updated.edited,
-    };
-
-    return payload;
-  } catch (err) {
-    console.error("edit_message failed:", err);
+  const data = { edited: true };
+  if (nextTextDefined) data.text = cleanText;
+  if (nextImageDefined) data.imageUrl = newImageUrl || null;
+  if (typeof newImagePublicId !== "undefined") {
+    data.imagePublicId = newImagePublicId || null;
   }
-}
+
+  const updated = await prisma.message.update({
+    where: { id },
+    data,
+    select: {
+      id: true,
+      chatId: true,
+      fromId: true,
+      text: true,
+      imageUrl: true,
+      imagePublicId: true,
+      updatedAt: true,
+      edited: true,
+    },
+  });
+
+  const imageChanged =
+    typeof newImagePublicId !== "undefined" &&
+    existing.imagePublicId &&
+    existing.imagePublicId !== (newImagePublicId || null);
+
+  if (imageChanged) {
+    try {
+      await cloudinary.uploader.destroy(existing.imagePublicId);
+    } catch (err) {
+      console.warn("cloudinary destroy on edit failed:", err);
+    }
+  }
+
+  return updated;
+};
 
 const deleteMessage = async (id, chatId, fromId) => {
-  if (!id) {
-    throw new Error("message id missing");
-  }
+  await ensureMember(chatId, fromId);
+  const existing = await getOwnedMessageOrThrow(id, chatId, fromId);
 
-  try {
-    const message = await prisma.message.findUnique({ where: { id } });
-    if (!message || message.fromId !== fromId || message.chatId !== chatId) {
-      throw new Error("you can not edit this message");
-    }
-    if (message.imagePublicId) {
-      try {
-        await cloudinary.uploader.destroy(message.imagePublicId, {
-          invalidate: true,
-        });
-      } catch (err) {
-        console.warn("cloudinary destroy failed (will continue):", err);
-      }
-    }
-    await prisma.message.delete({ where: { id } });
-
-    const nextLast = await prisma.message.findFirst({
+  const [_, nextLast] = await prisma.$transaction([
+    prisma.message.delete({ where: { id } }),
+    prisma.message.findFirst({
       where: { chatId },
       orderBy: { createdAt: "desc" },
       select: { id: true, text: true, imageUrl: true, createdAt: true },
-    });
+    }),
+  ]);
 
-    return {
-      id,
-      chatId,
-      fromId,
-      nextLast: nextLast
-        ? {
-            id: nextLast.id,
-            text: nextLast.text ?? "",
-            imageUrl: nextLast.imageUrl ?? null,
-            createdAt: nextLast.createdAt,
-          }
-        : null,
-    };
-  } catch (err) {
-    console.error("delete_message failed:", err);
+  if (existing.imagePublicId) {
+    try {
+      await cloudinary.uploader.destroy(existing.imagePublicId, {
+        invalidate: true,
+      });
+    } catch (err) {
+      console.warn("cloudinary destroy failed (will continue):", err);
+    }
   }
+
+  return {
+    id,
+    chatId,
+    fromId,
+    nextLast: nextLast
+      ? {
+          id: nextLast.id,
+          text: nextLast.text ?? "",
+          imageUrl: nextLast.imageUrl ?? null,
+          createdAt: nextLast.createdAt,
+        }
+      : null,
+  };
 };
 
 const markMessagesAsRead = async (chatId, readerId) => {
-  await prisma.message.updateMany({
+  await ensureMember(chatId, readerId);
+  const result = await prisma.message.updateMany({
     where: {
       chatId,
       read: false,
@@ -160,8 +152,17 @@ const markMessagesAsRead = async (chatId, readerId) => {
     },
     data: { read: true },
   });
-  const payload = { chatId, readerId };
-  return payload;
+  return { chatId, readerId, updated: result.count };
+};
+
+const countUnreadForUser = async (chatId, userId) => {
+  return prisma.message.count({
+    where: {
+      chatId,
+      read: false,
+      NOT: { fromId: userId },
+    },
+  });
 };
 
 module.exports = {
@@ -169,4 +170,5 @@ module.exports = {
   deleteMessage,
   editMessage,
   markMessagesAsRead,
+  countUnreadForUser,
 };
