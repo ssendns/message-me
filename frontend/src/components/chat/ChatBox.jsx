@@ -15,8 +15,10 @@ export default function ChatBox({
   onLoadMore,
 }) {
   const containerRef = useRef(null);
-  const topSentinelRef = useRef(null);
-  const [showScrollDown, setShowScrollDown] = useState(false);
+  const wasLoadingMoreRef = useRef(false);
+  const prevHeightRef = useRef(0);
+  const prevTopRef = useRef(0);
+  const [isNearBottom, setIsNearBottom] = useState(true);
 
   const nameById = useMemo(() => {
     const map = new Map();
@@ -24,72 +26,51 @@ export default function ChatBox({
     return map;
   }, [participants]);
 
-  const uniqueMessages = useMemo(() => {
-    const seen = new Set();
-    const out = [];
-    for (const m of messages) {
-      if (m && !seen.has(m.id)) {
-        seen.add(m.id);
-        out.push(m);
-      }
-    }
-    return out;
-  }, [messages]);
-
-  const scrollToBottomIfNear = useCallback(() => {
+  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (distanceFromBottom <= BOTTOM_STICKY_PX) {
-      el.scrollTop = el.scrollHeight;
-      setShowScrollDown(false);
+    if (loadingMore && !wasLoadingMoreRef.current) {
+      wasLoadingMoreRef.current = true;
+      prevHeightRef.current = el.scrollHeight;
+      prevTopRef.current = el.scrollTop;
     }
-  }, []);
+  }, [loadingMore]);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-    setShowScrollDown(false);
-  }, [uniqueMessages.length]);
+  }, [messages]);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+
+    if (wasLoadingMoreRef.current) {
+      const diff = el.scrollHeight - prevHeightRef.current;
+      el.scrollTop = prevTopRef.current + diff;
+      wasLoadingMoreRef.current = false;
+      return;
+    }
+
+    if (isNearBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [messages, isNearBottom]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
     const onScroll = () => {
-      const distanceFromBottom =
-        el.scrollHeight - el.scrollTop - el.clientHeight;
-      setShowScrollDown(distanceFromBottom > BOTTOM_STICKY_PX);
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setIsNearBottom(distance <= BOTTOM_STICKY_PX);
     };
+
     el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    if (!onLoadMore || !hasMore) return;
-    const el = topSentinelRef.current;
-    const scroller = containerRef.current;
-    if (!el || !scroller) return;
-
-    let prevHeight = 0;
-    const io = new IntersectionObserver(
-      async ([entry]) => {
-        if (!entry?.isIntersecting || loadingMore) return;
-        prevHeight = scroller.scrollHeight;
-        await onLoadMore?.();
-        const diff = scroller.scrollHeight - prevHeight;
-        scroller.scrollTop = scroller.scrollTop + diff;
-      },
-      { root: scroller, rootMargin: "0px", threshold: 1 }
-    );
-
-    io.observe(el);
-    return () => io.disconnect();
-  }, [onLoadMore, hasMore, loadingMore]);
-
-  useEffect(() => {
-    scrollToBottomIfNear();
-  }, [uniqueMessages, scrollToBottomIfNear]);
 
   const renderMessages = useCallback(
     (list) => {
@@ -136,34 +117,24 @@ export default function ChatBox({
 
   return (
     <div className="relative h-full">
-      <div ref={containerRef} className="flex-1 h-full overflow-y-auto px-0">
+      <div
+        ref={containerRef}
+        className="flex-1 h-full overflow-y-auto px-6 py-3"
+      >
         {hasMore && (
-          <div
-            ref={topSentinelRef}
-            className="h-6 flex items-center justify-center text-xs text-muted"
-          >
-            {loadingMore ? "loading..." : ""}
+          <div className="mb-3">
+            <button
+              onClick={onLoadMore}
+              disabled={loadingMore}
+              className="text-sm px-3 py-1 rounded border hover:bg-gray-50 disabled:opacity-50"
+            >
+              {loadingMore ? "loading..." : "load more"}
+            </button>
           </div>
         )}
 
-        {renderMessages(uniqueMessages)}
+        {renderMessages(messages)}
       </div>
-
-      {showScrollDown && (
-        <button
-          onClick={() => {
-            const el = containerRef.current;
-            if (!el) return;
-            el.scrollTop = el.scrollHeight;
-            setShowScrollDown(false);
-          }}
-          className="absolute right-4 bottom-4 rounded-full shadow p-2 bg-white border hover:bg-gray-50"
-          title="scroll to latest"
-          aria-label="scroll to latest"
-        >
-          ↓
-        </button>
-      )}
     </div>
   );
 }
