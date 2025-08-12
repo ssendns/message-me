@@ -34,7 +34,7 @@ export function updateUser({ newUsername, newPassword, token }) {
   });
 }
 
-export async function uploadImage(file) {
+export async function upload(file) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -48,10 +48,19 @@ export async function uploadImage(file) {
   return await res.json();
 }
 
-export async function getChatMessages({ chatId, token }) {
-  return request(`/chats/${chatId}`, {
-    token,
-  });
+export async function getChatMessages({
+  chatId,
+  token,
+  limit = 30,
+  cursor,
+  direction = "older",
+}) {
+  const q = new URLSearchParams();
+  if (limit) q.set("limit", String(limit));
+  if (cursor != null) q.set("cursor", String(cursor));
+  if (direction) q.set("direction", direction);
+
+  return request(`/chats/${chatId}/messages?${q.toString()}`, { token });
 }
 
 export async function getAllChats(token) {
