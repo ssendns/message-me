@@ -60,7 +60,9 @@ export async function getChatMessages({
   if (cursor != null) q.set("cursor", String(cursor));
   if (direction) q.set("direction", direction);
 
-  return request(`/chats/${chatId}/messages?${q.toString()}`, { token });
+  const url = `/chats/${chatId}/messages?${q.toString()}`;
+  const data = await request(url, { token });
+  return data;
 }
 
 export async function getAllChats(token) {
