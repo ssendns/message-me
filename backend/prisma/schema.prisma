@@ -9,22 +9,23 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  username  String    @unique
-  password  String
-  messagesSent Message[]   @relation("FromUser")
-  participant ChatParticipant[]
-  createdAt    DateTime          @default(now())
+  id            Int              @id @default(autoincrement())
+  username      String           @unique
+  password      String
+  messagesSent  Message[]        @relation("FromUser")
+  participant   ChatParticipant[]
+  createdAt     DateTime         @default(now())
 }
 
 model Chat {
-  id           Int               @id @default(autoincrement())
+  id            Int               @id @default(autoincrement())
   title         String            @default("chat") 
-  type         ChatType          @default(DIRECT) 
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  participants ChatParticipant[] 
-  messages     Message[]  
+  type          ChatType          @default(DIRECT) 
+  privateKey    String?           @unique
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  participants  ChatParticipant[] 
+  messages      Message[]  
 }
 
 enum ChatType {
@@ -33,11 +34,11 @@ enum ChatType {
 }
 
 model ChatParticipant {
-  id         Int      @id @default(autoincrement())
-  chatId     Int
-  userId     Int
-  role       ParticipantRole @default(MEMBER)
-  lastReadAt DateTime?
+  id            Int               @id @default(autoincrement())
+  chatId        Int
+  userId        Int
+  role          ParticipantRole   @default(MEMBER)
+  lastReadAt    DateTime?
 
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -52,16 +53,16 @@ enum ParticipantRole {
 }
 
 model Message {
-  id        Int      @id @default(autoincrement())
-  chatId    Int
-  fromId    Int
-  text   String   @default("")
-  imageUrl  String?
+  id            Int                @id @default(autoincrement())
+  chatId        Int
+  fromId        Int
+  text          String             @default("")
+  imageUrl      String?
   imagePublicId String?
-  edited    Boolean  @default(false)
-  read      Boolean   @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  edited        Boolean            @default(false)
+  read          Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
   from User @relation("FromUser", fields: [fromId], references: [id])
