@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import ChatBox from "./ChatBox";
 import ImageSendModal from "./ImageSendModal";
 import useChatMessages from "../../hooks/useChatMessages";
@@ -20,43 +20,58 @@ export default function ChatArea({
   const [pickedFile, setPickedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  const { messages } = useChatMessages({ chatId, currentUserId });
+  const { messages, loadingOlder, hasMore, loadOlder } = useChatMessages({
+    chatId,
+    currentUserId,
+  });
   const { sendMessage } = useSendMessage(currentUserId);
   const { uploadImage, loading, error } = useUploadImage();
 
-  const isGroup = String(type || "").toUpperCase() === "GROUP";
-  const membersCount = participants.length;
+  const isGroup = useMemo(
+    () => String(type || "").toUpperCase() === "GROUP",
+    [type]
+  );
+  const membersCount = useMemo(() => participants.length, [participants]);
 
-  const handleSend = () => {
-    if (!messageText.trim() || !chatId) return;
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
-    sendMessage({
-      chatId,
-      text: messageText,
-    });
+  const handleSend = useCallback(() => {
+    const text = messageText.trim();
+    if (!chatId || !text) return;
 
+    sendMessage({ chatId, text });
     setMessageText("");
-  };
+  }, [chatId, messageText, sendMessage]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    },
+    [handleSend]
+  );
 
-  const handlePickFile = () => fileInputRef.current?.click();
+  const handlePickFile = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = useCallback((e) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     setPickedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
     setPickerOpen(true);
-    e.target.value = "";
-  };
+  }, []);
 
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     setPickerOpen(false);
     setPickedFile(null);
     setMessageText("");
@@ -64,24 +79,27 @@ export default function ChatArea({
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
-  };
+  }, [previewUrl]);
 
-  const handleModalSend = async (caption) => {
-    if (!pickedFile || !chatId) return;
-    try {
-      const uploaded = await uploadImage(pickedFile);
-      if (uploaded?.url) {
-        sendMessage({
-          chatId,
-          text: caption || " ",
-          imageUrl: uploaded.url,
-          imagePublicId: uploaded.publicId,
-        });
+  const handleModalSend = useCallback(
+    async (caption) => {
+      if (!pickedFile || !chatId) return;
+      try {
+        const uploaded = await uploadImage(pickedFile);
+        if (uploaded?.url) {
+          sendMessage({
+            chatId,
+            text: caption?.trim() ? caption : " ",
+            imageUrl: uploaded.url,
+            imagePublicId: uploaded.publicId,
+          });
+        }
+      } finally {
+        handleModalClose();
       }
-    } finally {
-      handleModalClose();
-    }
-  };
+    },
+    [pickedFile, chatId, uploadImage, sendMessage, handleModalClose]
+  );
 
   return (
     <div className="flex flex-col flex-1 h-full">
@@ -112,6 +130,9 @@ export default function ChatArea({
           currentUserId={currentUserId}
           participants={participants}
           isGroup={String(type).toUpperCase() === "GROUP"}
+          hasMore={hasMore}
+          loadingMore={loadingOlder}
+          onLoadMore={loadOlder}
         />
       </div>
 
