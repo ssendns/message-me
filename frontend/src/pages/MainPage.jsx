@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatList from "../components/chatList/ChatList";
 import ChatArea from "../components/chat/ChatArea";
@@ -18,22 +18,20 @@ export default function MainPage() {
   const currentUserId = Number(localStorage.getItem("id"));
 
   const navigate = useNavigate();
-  const sidebarRef = useRef();
+  const sidebarRef = useRef(null);
   const { socket, isReady } = useSocket();
 
-  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
-  const closeSidebar = () => setSidebarOpen(false);
+  const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const handleChatSelect = useCallback((chat) => setSelectedChat(chat), []);
+  const handleBack = useCallback(() => setSelectedChat(null), []);
+  const handleEdit = () => navigate("/edit");
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.clear();
     if (socket?.connected) socket.disconnect();
     navigate("/log-in");
-  };
-
-  const handleEdit = () => navigate("/edit");
-
-  const handleChatSelect = (chat) => setSelectedChat(chat);
-  const handleBack = () => setSelectedChat(null);
+  }, [navigate, socket]);
 
   const handleWelcomeConfirm = () => {
     localStorage.setItem("alreadyVisited", "true");
@@ -65,7 +63,7 @@ export default function MainPage() {
     }
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [sidebarOpen]);
+  }, [sidebarOpen, closeSidebar]);
 
   useEffect(() => {
     const alreadyVisited = localStorage.getItem("alreadyVisited");
@@ -77,11 +75,8 @@ export default function MainPage() {
   useEffect(() => {
     if (socket && isReady && currentUserId) {
       socket.emit("join", { userId: currentUserId });
-      console.log("joined online room with id:", currentUserId);
-
-      return () => {
-        socket.emit("leave", currentUserId);
-      };
+      socket.emit("join", { userId: currentUserId });
+      return () => {};
     }
   }, [socket, isReady, currentUserId]);
 
