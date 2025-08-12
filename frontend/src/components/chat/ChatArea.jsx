@@ -20,10 +20,11 @@ export default function ChatArea({
   const [pickedFile, setPickedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  const { messages, loadingOlder, hasMore, loadOlder } = useChatMessages({
-    chatId,
-    currentUserId,
-  });
+  const { messages, loadingOlder, hasMore, loadOlder, firstUnreadId } =
+    useChatMessages({
+      chatId,
+      currentUserId,
+    });
   const { sendMessage } = useSendMessage(currentUserId);
   const { uploadImage, loading, error } = useUploadImage();
 
@@ -133,6 +134,7 @@ export default function ChatArea({
           hasMore={hasMore}
           loadingMore={loadingOlder}
           onLoadMore={loadOlder}
+          firstUnreadId={firstUnreadId}
         />
       </div>
 

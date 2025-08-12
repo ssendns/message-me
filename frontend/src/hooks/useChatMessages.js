@@ -5,6 +5,7 @@ const PAGE = 30;
 
 export default function useChatMessages({ chatId, currentUserId }) {
   const [messages, setMessages] = useState([]);
+  const [firstUnreadId, setFirstUnreadId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -17,8 +18,7 @@ export default function useChatMessages({ chatId, currentUserId }) {
     setMessages([]);
     setHasMore(true);
     oldestCursorRef.current = null;
-
-    console.log("[init] fetch", { chatId, limit: PAGE, direction: "older" });
+    setFirstUnreadId(null);
 
     (async () => {
       setInitialLoading(true);
@@ -30,12 +30,12 @@ export default function useChatMessages({ chatId, currentUserId }) {
           direction: "older",
         });
         const list = Array.isArray(data.messages) ? data.messages : [];
-        console.log("[init] resp", {
-          count: list.length,
-          nextCursor: data?.nextCursor,
-          firstId: list[0]?.id,
-          lastId: list[list.length - 1]?.id,
-        });
+
+        const firstUnread = list.find(
+          (m) => m.fromId !== currentUserId && !m.read
+        );
+        setFirstUnreadId(firstUnread?.id ?? null);
+
         setMessages(list);
         oldestCursorRef.current = data.nextCursor ?? null;
         setHasMore(Boolean(data.nextCursor));
@@ -45,16 +45,10 @@ export default function useChatMessages({ chatId, currentUserId }) {
         setInitialLoading(false);
       }
     })();
-  }, [chatId, token]);
+  }, [chatId, token, currentUserId]);
 
   const loadOlder = useCallback(async () => {
     if (!chatId || !token || !hasMore || loadingOlder) return;
-    console.log("[older] fetch", {
-      chatId,
-      limit: PAGE,
-      cursor: oldestCursorRef.current,
-      direction: "older",
-    });
     setLoadingOlder(true);
     try {
       const data = await getChatMessages({
@@ -72,12 +66,6 @@ export default function useChatMessages({ chatId, currentUserId }) {
       } else {
         setHasMore(false);
       }
-      console.log("[older] resp", {
-        count: chunk.length,
-        nextCursor: data?.nextCursor,
-        firstId: chunk[0]?.id,
-        lastId: chunk[chunk.length - 1]?.id,
-      });
     } catch (err) {
       console.error("load older failed:", err);
     } finally {
@@ -103,13 +91,6 @@ export default function useChatMessages({ chatId, currentUserId }) {
               : m
           );
         }
-        console.log("[socket] receive_message", {
-          incChat: message.chatId,
-          localChat: chatId,
-          id: message.id,
-          fromId: message.fromId,
-          read: message.read,
-        });
         return next;
       });
     };
@@ -137,14 +118,6 @@ export default function useChatMessages({ chatId, currentUserId }) {
           if (readerId !== currentUserId && m.fromId === currentUserId) {
             return { ...m, read: true };
           }
-
-          console.log("[socket] messages_read", {
-            cid,
-            readerId,
-            localChatId: chatId,
-            me: currentUserId,
-          });
-
           return m;
         })
       );
@@ -179,13 +152,11 @@ export default function useChatMessages({ chatId, currentUserId }) {
             : message
         )
       );
-      console.log("[socket] edited", { cid, id });
     };
 
     const handleDeletedMessage = ({ id, chatId: cid }) => {
       if (String(cid) !== String(chatId)) return;
       setMessages((prev) => prev.filter((message) => message.id !== id));
-      console.log("[socket] deleted", { cid, id });
     };
 
     socket.on("receive_edited_message", handleEditedMessage);
@@ -225,5 +196,6 @@ export default function useChatMessages({ chatId, currentUserId }) {
     loadingOlder,
     hasMore,
     loadOlder,
+    firstUnreadId,
   };
 }
