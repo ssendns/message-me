@@ -67,10 +67,13 @@ export default function useChatList(
         if (cancelled) return;
 
         const chattedIds = new Set(
-          chats.flatMap(
-            (chat) =>
-              chat.participants?.map((participant) => participant.id) || []
-          )
+          (chats || [])
+            .filter((c) => !c.isGroup)
+            .flatMap((chat) =>
+              (chat.participants || [])
+                .map((p) => p.id)
+                .filter((id) => id !== currentUserId)
+            )
         );
 
         const items = all
@@ -84,6 +87,7 @@ export default function useChatList(
             isNew: true,
             displayName: user.username,
             participants: [{ id: user.id, username: user.username }],
+            time: 0,
           }));
         if (!cancelled) setSuggestedUsers(items);
       } catch (err) {
