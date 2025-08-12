@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 dotenv.config();
-const prisma = require("../utils/db");
+const prisma = require("../utils/prisma");
 
 const app = express();
 
@@ -22,7 +22,7 @@ app.get("/test", async (req, res) => {
 });
 
 app.use("/profile", userRouter);
-app.use("/chats/:chatId", messageRouter);
+app.use("/chats/:chatId/messages", messageRouter);
 app.use("/chats", chatRouter);
 app.use("/upload", uploadRouter);
 app.use("/", authRouter);
