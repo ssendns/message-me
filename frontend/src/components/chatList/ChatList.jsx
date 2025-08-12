@@ -1,7 +1,7 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import useSocket from "../../hooks/useSocket";
 import useChatList from "../../hooks/useChatList";
 import ChatListItem from "./ChatListItem";
-import useSocket from "../../hooks/useSocket";
-import { useState, useEffect, useRef } from "react";
 
 export default function ChatList({
   token,
@@ -18,72 +18,68 @@ export default function ChatList({
   );
   const { socket } = useSocket();
   const [pendingPeerId, setPendingPeerId] = useState(null);
-  const pendingHandlerRef = useRef(null);
+  const pendingTimerRef = useRef(null);
 
   useEffect(() => {
     return () => {
-      if (socket && pendingHandlerRef.current) {
-        socket.off("chat_ready", pendingHandlerRef.current);
-        pendingHandlerRef.current = null;
-      }
+      if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
     };
-  }, [socket]);
+  }, []);
 
-  const isChatOnline = (item) => {
-    if ((item.type || "").toUpperCase() === "GROUP") {
-      return false;
-    }
+  const isChatOnline = useCallback(
+    (item) => {
+      const isGroup = String(item.type || "").toUpperCase() === "GROUP";
+      if (isGroup) return false;
 
-    const others = (item.participants || [])
-      .map((p) => String(p.id))
-      .filter((id) => id !== String(currentUserId));
+      const others = (item.participants || [])
+        .map((p) => String(p.id))
+        .filter((id) => id !== String(currentUserId));
 
-    return others.some((id) => onlineUserIds.includes(id));
-  };
+      return others.some((id) => onlineUserIds.includes(id));
+    },
+    [currentUserId, onlineUserIds]
+  );
 
-  const handleSelect = (item) => {
-    if (!item.isNew) {
-      onSelect(item);
-      markChatRead(item.id);
-      return;
-    }
-
-    if (!socket) return;
-
-    const peerId = item.participants?.[0]?.id;
-    if (!peerId) return;
-
-    if (pendingPeerId && pendingPeerId !== peerId) return;
-
-    setPendingPeerId(peerId);
-
-    const onReady = ({ chatId, peerId: returnedPeerId }) => {
-      if (returnedPeerId !== peerId) return;
-
-      setPendingPeerId(null);
-      if (socket && pendingHandlerRef.current) {
-        socket.off("chat_ready", pendingHandlerRef.current);
-        pendingHandlerRef.current = null;
+  const handleSelect = useCallback(
+    (item) => {
+      if (!item.isNew) {
+        onSelect(item);
+        markChatRead(item.id);
+        return;
       }
 
-      onSelect({
-        id: chatId,
-        type: "PRIVATE",
-        displayName: item.displayName,
-        participants: item.participants,
-        lastMessageText: "",
-        lastMessageImageUrl: null,
-        time: null,
-        unreadCount: 0,
-        hasUnread: false,
+      if (!socket) return;
+      const peerId = item.participants?.[0]?.id;
+      if (!peerId) return;
+
+      if (pendingPeerId && pendingPeerId === peerId) return;
+      setPendingPeerId(peerId);
+      if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = setTimeout(() => {
+        setPendingPeerId((curr) => (curr === peerId ? null : curr));
+      }, 8000);
+      socket.once("chat_ready", ({ chatId, peerId: returnedPeerId }) => {
+        if (returnedPeerId !== peerId) return;
+        if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+        setPendingPeerId(null);
+
+        onSelect({
+          id: chatId,
+          type: "DIRECT",
+          displayName: item.displayName,
+          participants: item.participants,
+          lastMessageText: "",
+          lastMessageImageUrl: null,
+          time: null,
+          unreadCount: 0,
+          hasUnread: false,
+        });
       });
-    };
 
-    pendingHandlerRef.current = onReady;
-    socket.on("chat_ready", onReady);
-
-    socket.emit("get_or_create_chat", { peerId });
-  };
+      socket.emit("get_or_create_chat", { peerId });
+    },
+    [socket, onSelect, markChatRead, pendingPeerId]
+  );
 
   return (
     <div className="space-y-1 px-2 pt-2 overflow-y-auto h-full">
