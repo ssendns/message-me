@@ -1,46 +1,58 @@
-const prisma = require("../../utils/db");
+const prisma = require("../../utils/prisma");
+const { ensureMember } = require("../../utils/chatUtils");
 
-async function ensureMember(chatId, userId) {
-  const chat = await prisma.chat.findFirst({
-    where: { id: chatId, participants: { some: { userId } } },
-    select: { id: true },
-  });
-  if (!chat) {
-    const err = new Error("forbidden");
-    err.status = 403;
-    throw err;
-  }
-}
+const MESSAGE_SELECT = {
+  id: true,
+  chatId: true,
+  fromId: true,
+  text: true,
+  imageUrl: true,
+  imagePublicId: true,
+  read: true,
+  edited: true,
+  createdAt: true,
+  updatedAt: true,
+};
 
 const getUserMessages = async (req, res) => {
   const userId = Number(req.user.userId);
   const chatId = Number(req.params.chatId);
   const limit = Math.min(Number(req.query.limit) || 30, 100);
   const cursor = req.query.cursor ? Number(req.query.cursor) : null;
+  const direction = (req.query.direction || "older").toLowerCase();
 
   try {
     await ensureMember(chatId, userId);
 
-    const messages = await prisma.message.findMany({
+    let items = [];
+
+    if (direction === "newer") {
+      items = await prisma.message.findMany({
+        where: { chatId },
+        orderBy: { id: "asc" },
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        take: limit,
+        select: MESSAGE_SELECT,
+      });
+
+      return res.json({
+        messages: items,
+        nextCursor: items.at(-1)?.id ?? null,
+      });
+    }
+
+    const olderBatch = await prisma.message.findMany({
       where: { chatId },
+      orderBy: { id: "desc" },
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      orderBy: { createdAt: "asc" },
       take: limit,
-      select: {
-        id: true,
-        chatId: true,
-        fromId: true,
-        text: true,
-        imageUrl: true,
-        imagePublicId: true,
-        read: true,
-        edited: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: MESSAGE_SELECT,
     });
 
-    res.json({ messages, nextCursor: messages.at(-1)?.id ?? null });
+    const messages = olderBatch.slice().reverse();
+    const nextCursor = messages[0]?.id ?? null;
+
+    return res.json({ messages, nextCursor });
   } catch (e) {
     console.error("listMessages failed:", e);
     res.status(e.status || 500).json({ message: e.message || "failed" });
@@ -51,46 +63,39 @@ const createMessage = async (req, res) => {
   const userId = Number(req.user.userId);
   const chatId = Number(req.params.chatId);
   const { text, imageUrl, imagePublicId } = req.body || {};
+
   try {
     await ensureMember(chatId, userId);
-    if ((!text || !text.trim()) && !imageUrl) {
+
+    const hasText = typeof text === "string" && text.trim().length > 0;
+    if (!hasText && !imageUrl) {
       return res
         .status(400)
         .json({ message: "message must have text or image" });
     }
 
-    const msg = await prisma.message.create({
+    const message = await prisma.message.create({
       data: {
         chatId,
         fromId: userId,
-        text: text?.trim() || "",
+        text: hasText ? text.trim() : "",
         imageUrl: imageUrl || null,
         imagePublicId: imagePublicId || null,
         read: false,
       },
-      select: {
-        id: true,
-        chatId: true,
-        fromId: true,
-        text: true,
-        imageUrl: true,
-        imagePublicId: true,
-        read: true,
-        edited: true,
-        createdAt: true,
-      },
+      select: MESSAGE_SELECT,
     });
 
-    // touch chat updatedAt
     await prisma.chat.update({
       where: { id: chatId },
       data: { updatedAt: new Date() },
     });
 
-    res.status(201).json(msg);
-  } catch (e) {
-    console.error("createMessage failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+    res.status(201).json(message);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: err.message || "failed to create message" });
   }
 };
 
@@ -110,46 +115,30 @@ const updateMessage = async (req, res) => {
       return res.status(403).json({ message: "cannot edit this message" });
     }
 
-    if (
-      typeof text === "string" &&
-      !text.trim() &&
-      typeof imageUrl === "undefined"
-    ) {
-      return res
-        .status(400)
-        .json({ message: "text empty and no image change" });
-    }
+    const nextText = typeof text === "string" ? text.trim() : existing.text;
+    const nextImageUrl =
+      typeof imageUrl !== "undefined" ? imageUrl : existing.imageUrl;
+    const nextImagePublicId =
+      typeof imagePublicId !== "undefined"
+        ? imagePublicId
+        : existing.imagePublicId;
 
     const updated = await prisma.message.update({
       where: { id: messageId },
       data: {
-        text: typeof text === "string" ? text.trim() : existing.text,
-        imageUrl:
-          typeof imageUrl !== "undefined" ? imageUrl : existing.imageUrl,
-        imagePublicId:
-          typeof imagePublicId !== "undefined"
-            ? imagePublicId
-            : existing.imagePublicId,
+        text: nextText,
+        imageUrl: nextImageUrl,
+        imagePublicId: nextImagePublicId,
         edited: true,
       },
-      select: {
-        id: true,
-        chatId: true,
-        fromId: true,
-        text: true,
-        imageUrl: true,
-        imagePublicId: true,
-        read: true,
-        edited: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: MESSAGE_SELECT,
     });
 
-    res.json(updated);
-  } catch (e) {
-    console.error("updateMessage failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+    res.status(200).json(updated);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: err.message || "failed to update message" });
   }
 };
 
@@ -170,14 +159,13 @@ const deleteMessage = async (req, res) => {
 
     await prisma.message.delete({ where: { id: messageId } });
 
-    // найти новый last для клиента (удобно)
     const nextLast = await prisma.message.findFirst({
       where: { chatId },
       orderBy: { createdAt: "desc" },
       select: { id: true, text: true, imageUrl: true, createdAt: true },
     });
 
-    res.json({
+    res.status(200).json({
       id: messageId,
       chatId,
       nextLast: nextLast
@@ -189,9 +177,10 @@ const deleteMessage = async (req, res) => {
           }
         : null,
     });
-  } catch (e) {
-    console.error("deleteMessage failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: err.message || "failed to delete message" });
   }
 };
 
