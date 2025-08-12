@@ -1,32 +1,49 @@
-const prisma = require("../../utils/db");
+const prisma = require("../../utils/prisma");
+const { privateKey } = require("../../utils/chatUtils");
 
-async function getOrCreateChat(user1, user2) {
-  const [u1, u2] = [Math.min(user1, user2), Math.max(user1, user2)];
-  let chat = await prisma.chat.findFirst({
-    where: {
-      participants: { some: { userId: u1 } },
-      AND: { participants: { some: { userId: u2 } } },
-    },
+const getOrCreateChat = async (user1, user2) => {
+  const key = privateKey(user1, user2);
+  const existing = await prisma.chat.findFirst({
+    where: { privateKey: key },
     select: { id: true },
   });
-  if (!chat) {
-    chat = await prisma.chat.create({
+  if (existing) return existing.id;
+
+  try {
+    const created = await prisma.chat.create({
       data: {
-        participants: { create: [{ userId: u1 }, { userId: u2 }] },
+        type: "DIRECT",
+        privateKey: key,
+        participants: {
+          create: [{ userId: user1 }, { userId: user2 }],
+        },
       },
       select: { id: true },
     });
+    return created.id;
+  } catch (err) {
+    // unique constraint failed
+    if (err.code === "P2002") {
+      const again = await prisma.chat.findFirst({
+        where: { privateKey: key },
+        select: { id: true },
+      });
+      if (again) return again.id;
+    }
+    throw err;
   }
-  return chat.id;
-}
+};
 
-async function getOtherUserIds(chatId, userId) {
-  const participants = await prisma.chatParticipant.findMany({
-    where: { chatId },
+const getOtherUserIds = async (chatId, userId) => {
+  const rows = await prisma.chatParticipant.findMany({
+    where: {
+      chatId,
+      NOT: { userId },
+    },
     select: { userId: true },
   });
-  return participants.map((p) => p.userId).filter((uid) => uid !== userId);
-}
+  return rows.map((row) => row.userId);
+};
 
 module.exports = {
   getOrCreateChat,
