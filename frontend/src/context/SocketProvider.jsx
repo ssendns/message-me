@@ -23,6 +23,13 @@ export default function SocketProvider({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!socket) return;
+    const onErr = (e) => console.error("[socket error]", e);
+    socket.on("error", onErr);
+    return () => socket.off("error", onErr);
+  }, [socket]);
+
   return (
     <SocketContext.Provider value={{ socket, isReady }}>
       {children}
