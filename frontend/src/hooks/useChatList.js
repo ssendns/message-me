@@ -1,37 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { getAllChats, getAllUsers } from "../services/api";
 import useSocket from "../hooks/useSocket";
-
-const sortByTimeDesc = (list) =>
-  [...list].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
-
-const safeUpper = (v) => String(v || "").toUpperCase();
-
-function mapApiChat(chat, currentUserId) {
-  const last = chat.lastMessage || null;
-  const participants = chat.participants || [];
-  const others = participants.filter((p) => p.id !== currentUserId);
-  const isGroup = safeUpper(chat.type) === "GROUP";
-  const fallbackName = others.map((p) => p.username).join(", ");
-  const displayName = isGroup
-    ? (chat.title && chat.title.trim()) || fallbackName
-    : fallbackName;
-
-  return {
-    id: chat.id,
-    type: chat.type,
-    isGroup,
-    membersCount: participants.length,
-    participants,
-    displayName,
-    lastMessageText: last?.text ?? "",
-    lastMessageImageUrl: last?.imageUrl ?? "",
-    lastMessageId: last?.id ?? null,
-    time: last?.createdAt ?? null,
-    unreadCount: chat.unreadCount ?? 0,
-    hasUnread: (chat.unreadCount ?? 0) > 0,
-  };
-}
+import { sortByTimeDesc, mapApiChat } from "../utils/chatUtils";
 
 export default function useChatList(
   token,
