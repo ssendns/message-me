@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import useSocket from "../../hooks/useSocket";
 import MessageMenu from "./MessageMenu";
 import EditInput from "./EditInput";
@@ -23,48 +23,54 @@ export default function Message({ message, currentUserId, authorName = null }) {
   const { messageRef, menuOpen, shouldOpenUpwards, openMenu, closeMenu } =
     useMessageMenu();
 
-  const time =
-    message.createdAt &&
-    new Date(message.createdAt).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const time = useMemo(() => {
+    return (
+      message.createdAt &&
+      new Date(message.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    );
+  }, [message.createdAt]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (!isReady) return;
     socket.emit("delete_message", {
       id: message.id,
       chatId: message.chatId,
       fromId: message.fromId,
     });
-  };
+  }, [isReady, socket, message.id, message.chatId, message.fromId]);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     setIsEditing(true);
     setEditText(message.text || "");
     setEditImageUrl(message.imageUrl || null);
     closeMenu();
-  };
+  }, [message.text, message.imageUrl, closeMenu]);
 
-  const pickImage = () => fileInputRef.current?.click();
+  const pickImage = useCallback(() => fileInputRef.current?.click(), []);
 
-  const onFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const uploaded = await uploadImage(file);
-    if (uploaded?.url) {
-      setEditImageUrl(uploaded.url);
-      setEditImagePublicId(uploaded.publicId || null);
-    }
-  };
+  const onFileChange = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+      const uploaded = await uploadImage(file);
+      if (uploaded?.url) {
+        setEditImageUrl(uploaded.url);
+        setEditImagePublicId(uploaded.publicId || null);
+      }
+    },
+    [uploadImage]
+  );
 
-  const removeImage = () => {
+  const removeImage = useCallback(() => {
     setEditImageUrl(null);
     setEditImagePublicId(null);
-  };
+  }, []);
 
-  const handleEditSubmit = () => {
+  const handleEditSubmit = useCallback(() => {
     socket.emit("edit_message", {
       id: message.id,
       chatId: message.chatId,
@@ -74,17 +80,40 @@ export default function Message({ message, currentUserId, authorName = null }) {
       newImagePublicId: editImagePublicId,
     });
     setIsEditing(false);
-  };
+  }, [
+    socket,
+    message.id,
+    message.chatId,
+    message.fromId,
+    editText,
+    editImageUrl,
+    editImagePublicId,
+  ]);
+
+  const handleContextMenu = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openMenu();
+    },
+    [openMenu]
+  );
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(message.text || "");
+    } catch {
+      //
+    } finally {
+      closeMenu();
+    }
+  }, [message.text, closeMenu]);
 
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"} my-2`}>
       <div
         ref={messageRef}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          openMenu();
-        }}
+        onContextMenu={handleContextMenu}
         className={`relative px-4 py-2 max-w-xs break-words rounded-xl ${
           isOwn
             ? "bg-primary text-white rounded-br-none"
@@ -100,6 +129,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
             {authorName}
           </div>
         )}
+
         {isEditing ? (
           <div className="space-y-2">
             {editImageUrl && (
@@ -110,9 +140,11 @@ export default function Message({ message, currentUserId, authorName = null }) {
                   className="max-w-[260px] rounded-lg block"
                 />
                 <button
+                  type="button"
                   onClick={removeImage}
                   className="absolute top-1 right-1 bg-white/90 text-black rounded-full p-1"
                   title="remove image"
+                  aria-label="remove image"
                 >
                   <X size={14} />
                 </button>
@@ -128,12 +160,14 @@ export default function Message({ message, currentUserId, authorName = null }) {
                 onChange={onFileChange}
               />
               <button
+                type="button"
                 onClick={pickImage}
                 disabled={uploading}
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
                   isOwn ? "bg-white/10" : "bg-white"
                 } disabled:opacity-50`}
-                title="change image"
+                title={editImageUrl ? "replace image" : "add image"}
+                aria-label={editImageUrl ? "replace image" : "add image"}
               >
                 {uploading ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -169,10 +203,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
             shouldOpenUpwards={shouldOpenUpwards}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onCopy={() => {
-              navigator.clipboard.writeText(message.text);
-              closeMenu();
-            }}
+            onCopy={handleCopy}
           />
         )}
       </div>
