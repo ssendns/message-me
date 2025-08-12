@@ -6,9 +6,10 @@ import {
   useCallback,
   useLayoutEffect,
 } from "react";
-import Message from "../message/Message";
-import { formatDate, DateLabel, UnreadDivider } from "../../utils/chatUtils";
-import { ChevronDown } from "lucide-react";
+import { UnreadDivider } from "../../utils/chatUtils";
+import ChatMessageRow from "./ChatMessageRow";
+import LoadMoreButton from "../buttons/LoadMoreButton";
+import NewMessagesButton from "../buttons/NewMessagesButton";
 
 const BOTTOM_PX = 64;
 
@@ -69,7 +70,6 @@ export default function ChatBox({
     const div = containerRef.current;
     if (!div) return;
 
-    // restore position after loading older messages
     if (wasLoadingMoreRef.current) {
       const diff = div.scrollHeight - prevHeightRef.current;
       div.scrollTop = prevTopRef.current + diff;
@@ -77,7 +77,6 @@ export default function ChatBox({
       return;
     }
 
-    // jump to first unread or bottom in the first load
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
 
@@ -95,7 +94,6 @@ export default function ChatBox({
       return;
     }
 
-    // new message received
     const lastId = messages.at(-1)?.id ?? null;
     const lastSeen = lastSeenLastIdRef.current;
 
@@ -119,54 +117,12 @@ export default function ChatBox({
 
   const decorated = useMemo(() => {
     if (!firstUnreadId) return messages;
-    const idx = messages.findIndex((message) => message.id === firstUnreadId);
+    const idx = messages.findIndex((m) => m.id === firstUnreadId);
     if (idx <= 0) return messages;
     const clone = messages.slice();
     clone.splice(idx, 0, { __divider: true, id: `divider-${firstUnreadId}` });
     return clone;
   }, [messages, firstUnreadId]);
-
-  const renderItem = useCallback(
-    (item, idx, list) => {
-      if (item.__divider) {
-        return <UnreadDivider key={item.id} />;
-      }
-
-      const prev = list[idx - 1];
-      const dateLabel = item.createdAt ? formatDate(item.createdAt) : null;
-      let showDate = false;
-      if (!item.__divider) {
-        if (!prev?.__divider) {
-          const prevDateLabel = prev?.createdAt
-            ? formatDate(prev.createdAt)
-            : null;
-          showDate = dateLabel && dateLabel !== prevDateLabel;
-        }
-      }
-
-      const isOwn = item.fromId === currentUserId;
-      const showAuthorHeader =
-        isGroup && !isOwn && (!prev || prev.fromId !== item.fromId);
-
-      const authorName = showAuthorHeader
-        ? nameById.get(String(item.fromId)) || "user"
-        : null;
-
-      const key = `${item.id}-${item.updatedAt ?? item.createdAt ?? ""}`;
-
-      return (
-        <div key={key} ref={setMsgRef(item.id)}>
-          {showDate && <DateLabel date={dateLabel} />}
-          <Message
-            message={item}
-            currentUserId={currentUserId}
-            authorName={authorName}
-          />
-        </div>
-      );
-    },
-    [currentUserId, isGroup, nameById]
-  );
 
   return (
     <div className="relative h-full">
@@ -175,34 +131,32 @@ export default function ChatBox({
         className="flex-1 h-full overflow-y-auto px-6 py-3"
       >
         {hasMore && (
-          <div className="mb-3 flex justify-center">
-            <button
-              onClick={onLoadMore}
-              disabled={loadingMore}
-              className="text-sm px-4 py-2 rounded-full border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:scale-95 transition disabled:opacity-50 disabled:hover:bg-white"
-            >
-              {loadingMore ? "loading..." : "load more"}
-            </button>
-          </div>
+          <LoadMoreButton loading={loadingMore} onClick={onLoadMore} />
         )}
 
         {decorated.length === 0 ? (
           <p className="text-sm text-muted">no messages yet</p>
         ) : (
-          decorated.map((it, i) => renderItem(it, i, decorated))
+          decorated.map((it, idx, list) =>
+            it.__divider ? (
+              <UnreadDivider key={it.id} />
+            ) : (
+              <ChatMessageRow
+                key={`${it.id}-${it.updatedAt ?? it.createdAt ?? ""}`}
+                item={it}
+                prev={list[idx - 1]}
+                currentUserId={currentUserId}
+                isGroup={isGroup}
+                nameById={nameById}
+                setMsgRef={setMsgRef}
+              />
+            )
+          )
         )}
       </div>
 
-      {pendingNew > 0 && !isNearBottom && (
-        <button
-          onClick={handleJumpToLatest}
-          className="absolute left-1/2 -translate-x-1/2 bottom-4 flex items-center gap-2 rounded-full shadow-lg px-4 py-2 bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 active:scale-95 transition"
-        >
-          <ChevronDown size={18} />
-          <span>
-            {pendingNew} new message{pendingNew > 1 ? "s" : ""}
-          </span>
-        </button>
+      {!isNearBottom && pendingNew > 0 && (
+        <NewMessagesButton count={pendingNew} onClick={handleJumpToLatest} />
       )}
     </div>
   );
