@@ -14,3 +14,21 @@ export function formatDate(dateStr) {
 
   return date.toLocaleDateString();
 }
+
+export function UnreadDivider() {
+  return (
+    <div className="my-3 flex items-center gap-2">
+      <div className="flex-1 h-px bg-gray-200" />
+      <span className="text-xs text-gray-500 whitespace-nowrap">unread</span>
+      <div className="flex-1 h-px bg-gray-200" />
+    </div>
+  );
+}
+
+export function DateLabel({ date }) {
+  return (
+    <div className="text-center text-xs text-muted my-2 uppercase tracking-wide">
+      {date}
+    </div>
+  );
+}
