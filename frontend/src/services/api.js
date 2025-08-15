@@ -2,6 +2,9 @@ const BASE_URL = "http://localhost:3000";
 
 async function request(endpoint, { method = "GET", token, body } = {}) {
   const headers = { "Content-Type": "application/json" };
+  if (body && !(body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${endpoint}`, {
@@ -26,11 +29,22 @@ export function getAllUsers(token) {
   return request("/profile/all", { token });
 }
 
-export function updateUser({ newUsername, newPassword, token }) {
+export function updateUser({ newUsername, newPassword, avatarUrl, token }) {
+  const payload = {};
+  if (newUsername && newUsername.trim())
+    payload.newUsername = newUsername.trim();
+  if (newPassword && newPassword.trim())
+    payload.newPassword = newPassword.trim();
+  if (avatarUrl && avatarUrl.trim()) payload.avatarUrl = avatarUrl.trim();
+  if (typeof avatarUrl !== "undefined") {
+    payload.avatarUrl =
+      typeof avatarUrl === "string" ? avatarUrl.trim() : avatarUrl;
+  }
+
   return request("/profile/edit", {
     method: "PATCH",
     token,
-    body: { newUsername, newPassword },
+    body: payload,
   });
 }
 
@@ -82,5 +96,26 @@ export async function logIn({ username, password }) {
   return request("/log-in", {
     method: "POST",
     body: { username, password },
+  });
+}
+
+export function updateAvatar({ token, imageUrl, imagePublicId }) {
+  return request("/profile/avatar", {
+    method: "PATCH",
+    token,
+    body: { imageUrl, imagePublicId },
+  });
+}
+
+export function deleteAvatar({ token }) {
+  return request("/profile/avatar", {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function getUser({ token }) {
+  return request("/profile", {
+    token,
   });
 }
