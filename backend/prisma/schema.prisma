@@ -28,6 +28,8 @@ model Chat {
   updatedAt       DateTime          @updatedAt
   participants    ChatParticipant[] 
   messages        Message[]  
+  avatarUrl       String?   
+  avatarPublicId  String?
 }
 
 enum ChatType {
