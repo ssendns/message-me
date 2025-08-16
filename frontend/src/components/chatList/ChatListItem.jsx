@@ -1,23 +1,33 @@
-import AvatarBubble from "./AvatarBubble";
+import Avatar from "../Avatar";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
 
 export default function ChatListItem({
   chat,
+  currentUserId,
   isActive,
   isOnline,
   onClick,
   waiting = false,
 }) {
   const {
+    id,
+    isGroup,
+    participants = [],
     displayName,
     lastMessageText,
     lastMessageImageUrl,
     time,
     hasUnread,
     unreadCount,
+    avatarUrl: groupAvatar,
   } = chat;
 
-  const name = displayName || "chat";
+  const other = !isGroup
+    ? participants.find((p) => String(p.id) !== String(currentUserId)) || null
+    : null;
+
+  const name = displayName || (other?.username ?? "chat");
+  const avatarUrl = isGroup ? groupAvatar || null : other?.avatarUrl || null;
 
   const formattedTime = time
     ? (() => {
@@ -44,7 +54,11 @@ export default function ChatListItem({
         isActive ? "bg-primary text-white" : "hover:bg-gray-100"
       }`}
     >
-      <AvatarBubble username={name} isOnline={isOnline} />
+      <Avatar
+        username={name}
+        avatarUrl={avatarUrl}
+        isOnline={!isGroup && Boolean(isOnline)}
+      />
 
       <div className="flex-1 relative">
         <div className="flex justify-between items-start">
@@ -82,7 +96,7 @@ export default function ChatListItem({
                 {formattedTime}
               </div>
             )}
-            {hasUnread && (
+            {hasUnread && unreadCount > 0 && (
               <span className="ml-auto text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
                 {unreadCount}
               </span>

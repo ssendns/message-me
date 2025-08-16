@@ -87,6 +87,7 @@ export default function ChatList({
         <ChatListItem
           key={it.id}
           chat={it}
+          currentUserId={currentUserId}
           isActive={String(it.id) === String(currentChat?.id)}
           isOnline={isChatOnline(it)}
           onClick={() => handleSelect(it)}
