@@ -14,6 +14,13 @@ router.post(
   chatController.addParticipant
 );
 
+router.delete(
+  "/:chatId/avatar",
+  authMiddleware,
+  chatController.deleteChatAvatar
+);
+router.patch("/:chatId/avatar", authMiddleware, chatController.addChatAvatar);
+
 router.get("/:chatId", chatController.getChatMessages);
 router.patch("/:chatId", authMiddleware, chatController.updateChat);
 router.delete("/:chatId", authMiddleware, chatController.deleteChat);

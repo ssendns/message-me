@@ -119,3 +119,18 @@ export function getUser({ token }) {
     token,
   });
 }
+
+export function setChatAvatar({ chatId, token, imageUrl, imagePublicId }) {
+  return request(`/chats/${chatId}/avatar`, {
+    method: "POST",
+    token,
+    body: { imageUrl, imagePublicId },
+  });
+}
+
+export function removeChatAvatar({ chatId, token }) {
+  return request(`/chats/${chatId}/avatar`, {
+    method: "DELETE",
+    token,
+  });
+}

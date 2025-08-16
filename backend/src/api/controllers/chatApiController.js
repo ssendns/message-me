@@ -1,4 +1,5 @@
 const prisma = require("../../utils/prisma");
+const cloudinary = require("../../../cloudinary");
 const { ensureMember, privateKey } = require("../../utils/chatUtils");
 
 const getAllChats = async (req, res) => {
@@ -9,7 +10,9 @@ const getAllChats = async (req, res) => {
       where: { participants: { some: { userId } } },
       include: {
         participants: {
-          include: { user: { select: { id: true, username: true } } },
+          include: {
+            user: { select: { id: true, username: true, avatarUrl: true } },
+          },
         },
         messages: {
           orderBy: { createdAt: "desc" },
@@ -47,6 +50,7 @@ const getAllChats = async (req, res) => {
         participants: chat.participants.map((p) => ({
           id: p.user.id,
           username: p.user.username,
+          avatarUrl: p.user.avatarUrl ?? null,
         })),
         lastMessage,
         unreadCount: unreadMap.get(chat.id) || 0,
@@ -242,6 +246,96 @@ const removeParticipant = async (req, res) => {
   }
 };
 
+const addChatAvatar = async (req, res) => {
+  try {
+    const userId = Number(req.user.userId);
+    const chatId = Number(req.params.chatId);
+    const { imageUrl, imagePublicId } = req.body || {};
+
+    await ensureMember(chatId, userId);
+
+    const chat = await prisma.chat.findUnique({ where: { id: chatId } });
+    if (!chat) return res.status(404).json({ error: "chat not found" });
+    if ((chat.type || "").toUpperCase() !== "GROUP") {
+      return res
+        .status(400)
+        .json({ error: "avatar allowed only for GROUP chats" });
+    }
+
+    if (chat.avatarPublicId && chat.avatarPublicId !== imagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(chat.avatarPublicId);
+      } catch {}
+    }
+
+    const updated = await prisma.chat.update({
+      where: { id: chatId },
+      data: {
+        avatarUrl: imageUrl || null,
+        avatarPublicId: imagePublicId || null,
+      },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        avatarUrl: true,
+        avatarPublicId: true,
+        updatedAt: true,
+      },
+    });
+
+    return res.json({ chat: updated });
+  } catch (err) {
+    console.error("addChatAvatar failed:", err);
+    return res
+      .status(err.status || 500)
+      .json({ error: err.message || "failed" });
+  }
+};
+
+const deleteChatAvatar = async (req, res) => {
+  try {
+    const userId = Number(req.user.userId);
+    const chatId = Number(req.params.chatId);
+
+    await ensureMember(chatId, userId);
+
+    const chat = await prisma.chat.findUnique({ where: { id: chatId } });
+    if (!chat) return res.status(404).json({ error: "chat not found" });
+    if ((chat.type || "").toUpperCase() !== "GROUP") {
+      return res
+        .status(400)
+        .json({ error: "avatar allowed only for GROUP chats" });
+    }
+
+    if (chat.avatarPublicId) {
+      try {
+        await cloudinary.uploader.destroy(chat.avatarPublicId);
+      } catch {}
+    }
+
+    const updated = await prisma.chat.update({
+      where: { id: chatId },
+      data: { avatarUrl: null, avatarPublicId: null },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        avatarUrl: true,
+        avatarPublicId: true,
+        updatedAt: true,
+      },
+    });
+
+    return res.json({ chat: updated });
+  } catch (err) {
+    console.error("deleteChatAvatar failed:", err);
+    return res
+      .status(err.status || 500)
+      .json({ error: err.message || "failed" });
+  }
+};
+
 module.exports = {
   getAllChats,
   getChatMessages,
@@ -250,4 +344,6 @@ module.exports = {
   deleteChat,
   addParticipant,
   removeParticipant,
+  addChatAvatar,
+  deleteChatAvatar,
 };
