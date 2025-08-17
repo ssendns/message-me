@@ -38,28 +38,51 @@ export const sortByTimeDesc = (list) =>
 
 const safeUpper = (v) => String(v || "").toUpperCase();
 
+function normalizeParticipant(p) {
+  if (!p) return null;
+  const src = p.user ?? p; // если есть p.user — берём его, иначе сам p
+  return {
+    id: src.id,
+    username: src.username,
+    avatarUrl: src.avatarUrl ?? null,
+  };
+}
+
 export function mapApiChat(chat, currentUserId) {
-  const last = chat.lastMessage || null;
-  const participants = chat.participants || [];
-  const others = participants.filter((p) => p.id !== currentUserId);
-  const isGroup = safeUpper(chat.type) === "GROUP";
+  const last = chat?.lastMessage ?? null;
+
+  // Надёжно разворачиваем участников
+  const rawParticipants = Array.isArray(chat?.participants)
+    ? chat.participants
+    : [];
+
+  const participants = rawParticipants
+    .map(normalizeParticipant)
+    .filter(Boolean);
+
+  const others = participants.filter(
+    (p) => String(p.id) !== String(currentUserId)
+  );
+
+  const isGroup = safeUpper(chat?.type) === "GROUP";
   const fallbackName = others.map((p) => p.username).join(", ");
   const displayName = isGroup
-    ? (chat.title && chat.title.trim()) || fallbackName
+    ? (chat?.title && chat.title.trim()) || fallbackName
     : fallbackName;
 
   return {
-    id: chat.id,
-    type: chat.type,
+    id: chat?.id,
+    type: chat?.type,
     isGroup,
     membersCount: participants.length,
-    participants,
+    participants, // <-- теперь у каждого будет {id, username, avatarUrl}
     displayName,
+    avatarUrl: chat?.avatarUrl ?? null, // аватар группы (если есть)
     lastMessageText: last?.text ?? "",
     lastMessageImageUrl: last?.imageUrl ?? "",
     lastMessageId: last?.id ?? null,
-    time: last?.createdAt ?? null,
-    unreadCount: chat.unreadCount ?? 0,
-    hasUnread: (chat.unreadCount ?? 0) > 0,
+    time: last?.createdAt ?? chat?.updatedAt ?? null,
+    unreadCount: chat?.unreadCount ?? 0,
+    hasUnread: (chat?.unreadCount ?? 0) > 0,
   };
 }
