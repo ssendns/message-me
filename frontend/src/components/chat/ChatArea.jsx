@@ -4,7 +4,8 @@ import ImageSendModal from "./ImageSendModal";
 import useChatMessages from "../../hooks/useChatMessages";
 import useSendMessage from "../../hooks/useSendMessage";
 import useUploadImage from "../../hooks/useUploadImage";
-import { Paperclip } from "lucide-react";
+import { Paperclip, Info } from "lucide-react";
+import GroupInfoDrawer from "./GroupInfoDrawer";
 
 export default function ChatArea({
   displayName,
@@ -19,6 +20,25 @@ export default function ChatArea({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickedFile, setPickedFile] = useState(null);
   const fileInputRef = useRef(null);
+  const [infoOpen, setInfoOpen] = useState(false);
+
+  const isGroup = useMemo(
+    () => String(type || "").toUpperCase() === "GROUP",
+    [type]
+  );
+
+  const handleOpenInfo = useCallback(() => {
+    if (isGroup) setInfoOpen(true);
+  }, [isGroup]);
+
+  const handleEditGroup = useCallback(
+    () => {
+      //
+    },
+    [
+      //
+    ]
+  );
 
   const { messages, loadingOlder, hasMore, loadOlder, firstUnreadId } =
     useChatMessages({
@@ -27,11 +47,6 @@ export default function ChatArea({
     });
   const { sendMessage } = useSendMessage(currentUserId);
   const { uploadImage, loading, error } = useUploadImage();
-
-  const isGroup = useMemo(
-    () => String(type || "").toUpperCase() === "GROUP",
-    [type]
-  );
   const membersCount = useMemo(() => participants.length, [participants]);
 
   useEffect(() => {
@@ -121,8 +136,16 @@ export default function ChatArea({
             </span>
           )}
         </div>
-
-        <div className="w-4" />
+        {isGroup && (
+          <button
+            onClick={handleOpenInfo}
+            className="p-2 rounded-full hover:bg-gray-100 ml-2"
+            title="Group info"
+            aria-label="Group info"
+          >
+            <Info size={18} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 bg-gray-50">
@@ -181,6 +204,27 @@ export default function ChatArea({
         onSend={handleModalSend}
       />
       {error && <div className="px-6 pb-3 text-xs text-red-600">{error}</div>}
+      {isGroup && infoOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30"
+          onClick={() => setInfoOpen(false)}
+        />
+      )}
+      {isGroup && (
+        <GroupInfoDrawer
+          open={infoOpen}
+          onClose={() => setInfoOpen(false)}
+          chat={{
+            id: chatId,
+            type,
+            title: displayName,
+            participants: participants,
+          }}
+          membersCount={membersCount}
+          currentUserId={currentUserId}
+          onEdit={handleEditGroup}
+        />
+      )}
     </div>
   );
 }
