@@ -69,7 +69,7 @@ export default function AvatarPicker({
 
   return (
     <div className="flex items-center gap-4">
-      <Avatar src={localUrl} name={username} size={72} />
+      <Avatar avatarUrl={localUrl} username={username} size={72} />
       <div className="flex items-center gap-2">
         <input
           ref={fileRef}
