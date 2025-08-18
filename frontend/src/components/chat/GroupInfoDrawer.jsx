@@ -2,12 +2,12 @@ import Avatar from "../Avatar";
 
 export default function GroupInfoDrawer({
   open,
-  onClose,
   chat,
   membersCount,
   currentUserId,
   onEdit,
 }) {
+  const isCurrent = (p) => String(p?.id) === String(currentUserId);
   return (
     <aside
       className={`fixed top-0 right-0 h-full w-[320px] bg-white shadow-lg z-40 
@@ -16,16 +16,16 @@ export default function GroupInfoDrawer({
     >
       <div className="p-3 border-b flex items-start justify-between">
         <div className="flex flex-col">
-          <h1 className="text-lg font-semibold">{chat.title}</h1>
+          <h1 className="text-lg text-primary font-semibold">{chat.title}</h1>
           <span className="text-xs text-gray-500">
             {membersCount} {membersCount === 1 ? "member" : "members"}
           </span>
         </div>
         <button
-          onClick={onClose}
-          className="p-2 rounded-full hover:bg-gray-100"
+          onClick={onEdit}
+          className="text-sm p-2 text-primary self-center hover:underline"
         >
-          ✕
+          edit
         </button>
       </div>
 
@@ -38,21 +38,18 @@ export default function GroupInfoDrawer({
               size={32}
               isOnline={null}
             />
-            <span>{p.username}</span>
-            {p.id === currentUserId && (
+            <span
+              className={`${
+                isCurrent(p) ? "text-primary font-medium" : "text-gray-800"
+              }`}
+            >
+              {p.username}
+            </span>
+            {isCurrent(p) && (
               <span className="text-gray-400 text-xs">(you)</span>
             )}
           </div>
         ))}
-      </div>
-
-      <div className="p-4 border-t">
-        <button
-          onClick={onEdit}
-          className="w-full px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
-        >
-          edit group
-        </button>
       </div>
     </aside>
   );
