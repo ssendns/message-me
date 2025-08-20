@@ -21,7 +21,7 @@ router.delete(
 );
 router.patch("/:chatId/avatar", authMiddleware, chatController.addChatAvatar);
 
-router.get("/:chatId", chatController.getChatMessages);
+router.get("/:chatId", authMiddleware, chatController.getChat);
 router.patch("/:chatId", authMiddleware, chatController.updateChat);
 router.delete("/:chatId", authMiddleware, chatController.deleteChat);
 router.get("/", authMiddleware, chatController.getAllChats);
