@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { signUp } from "../services/api";
 
 export default function SignUpPage() {
   const [username, setUsername] = useState("");
@@ -12,21 +13,12 @@ export default function SignUpPage() {
     setError(null);
 
     try {
-      const res = await fetch("http://localhost:3000/sign-up", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      const { user } = await signUp({ username, password });
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || "failed to sign up");
-      }
+      localStorage.setItem("token", user.token);
+      localStorage.setItem("username", user.username);
+      localStorage.setItem("id", String(user.id));
 
-      const data = await res.json();
-      localStorage.setItem("token", data.user.token);
-      localStorage.setItem("username", data.user.username);
-      localStorage.setItem("id", data.user.id);
       navigate("/");
     } catch (err) {
       console.error("signup failed:", err);

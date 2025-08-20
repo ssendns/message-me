@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { logIn } from "../services/api";
 
 export default function LogInPage() {
   const [username, setUsername] = useState("");
@@ -12,18 +13,7 @@ export default function LogInPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/log-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "failed to log in");
-      }
-
-      const { user } = await res.json();
+      const { user } = await logIn({ username, password });
 
       localStorage.setItem("token", user.token);
       localStorage.setItem("username", user.username);
