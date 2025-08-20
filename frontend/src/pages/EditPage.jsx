@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { getCurrentUser, editUser, getChat, editGroup } from "../services/api";
 import AvatarPicker from "../components/AvatarPicker";
+import { ArrowLeft } from "lucide-react";
 
 export default function EditPage() {
   const token = localStorage.getItem("token");
@@ -11,16 +12,13 @@ export default function EditPage() {
 
   const [name, setName] = useState("");
 
-  // user only
-  const [password, setPassword] = useState("");
-
+  const [password, setPassword] = useState(""); // user only
   // group mode only
   const [initialAvatar, setInitialAvatar] = useState(null);
   const [avatarDraft, setAvatarDraft] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const initialNameRef = useRef("");
 
   useEffect(() => {
@@ -85,7 +83,6 @@ export default function EditPage() {
     const avatarChanged =
       JSON.stringify(avatarDraft ?? null) !==
       JSON.stringify(initialAvatar ?? null);
-
     return nameChanged || passwordChanged || avatarChanged;
   }, [name, password, avatarDraft, initialAvatar, isGroupMode]);
 
@@ -126,14 +123,13 @@ export default function EditPage() {
         if (name.trim() !== initialNameRef.current)
           body.newUsername = name.trim();
         if (password.trim()) body.newPassword = password.trim();
-
         if (JSON.stringify(avatarDraft) !== JSON.stringify(initialAvatar)) {
           body.avatarUrl = avatarDraft?.url ?? null;
           body.avatarPublicId = avatarDraft?.publicId ?? null;
         }
 
         const res = await editUser({ ...body, token });
-        const user = res?.user;
+        const user = res?.user || {};
 
         if (user.username) {
           initialNameRef.current = user.username;
@@ -168,26 +164,45 @@ export default function EditPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground font-poppins p-layout max-w-screen mx-auto">
-      <div className="max-w-md mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold text-primary">
-          {isGroupMode ? "edit group" : "edit account"}
-        </h1>
+    <main className="min-h-screen bg-[#fafbfc] text-foreground font-poppins flex items-center justify-center">
+      <div className="w-full max-w-lg rounded-2xl border bg-white shadow-sm px-6 py-8">
+        <div className="grid grid-cols-3 items-center mb-6">
+          <Link
+            to="/"
+            className="text-sm text-muted hover:text-primary transition justify-self-start"
+          >
+            <ArrowLeft size={20} strokeWidth={2} />
+          </Link>
+          <h1 className="text-lg font-semibold text-primary text-center">
+            {isGroupMode ? "edit group" : "edit account"}
+          </h1>
+          <span
+            className={`text-xs justify-self-end ${
+              hasChanges ? "text-amber-600" : "text-transparent"
+            }`}
+          >
+            {hasChanges ? "unsaved changes" : "•"}
+          </span>
+        </div>
 
-        <AvatarPicker
-          initialUrl={avatarDraft?.url ?? null}
-          onChange={(val) => setAvatarDraft(val)}
-          label={name}
-        />
+        <div className="flex justify-center mb-6">
+          <AvatarPicker
+            initialUrl={avatarDraft?.url ?? null}
+            onChange={(val) => setAvatarDraft(val)}
+            label={name}
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="h-px bg-gray-100 mb-6" />
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block mb-1">
+            <label className="mb-1.5 block text-sm text-muted">
               {isGroupMode ? "group title" : "username"}
             </label>
             <input
               type="text"
-              className="w-full border border-muted rounded px-4 py-2"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-primary/40"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={isGroupMode ? "enter group title" : "enter username"}
@@ -196,10 +211,12 @@ export default function EditPage() {
 
           {!isGroupMode && (
             <div>
-              <label className="block mb-1">new password</label>
+              <label className="mb-1.5 block text-sm text-muted">
+                new password
+              </label>
               <input
                 type="password"
-                className="w-full border border-muted rounded px-4 py-2"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-primary/40"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="leave blank to keep current"
@@ -207,13 +224,22 @@ export default function EditPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={saving || !hasChanges}
-            className="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 disabled:opacity-50"
-          >
-            {saving ? "saving..." : "save changes"}
-          </button>
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="w-28 px-4 py-2 text-sm rounded-lg border hover:bg-gray-50 text-center"
+            >
+              cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !hasChanges}
+              className="w-28 px-4 py-2 text-sm rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 text-center"
+            >
+              {saving ? "saving..." : "save"}
+            </button>
+          </div>
         </form>
       </div>
     </main>
