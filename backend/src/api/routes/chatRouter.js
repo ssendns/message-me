@@ -2,27 +2,21 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
 const chatController = require("../controllers/chatApiController");
+const groupController = require("../controllers/groupController");
 
 router.delete(
   "/:chatId/participants/:userId",
   authMiddleware,
-  chatController.removeParticipant
+  groupController.removeParticipant
 );
 router.post(
   "/:chatId/participants",
   authMiddleware,
-  chatController.addParticipant
+  groupController.addParticipant
 );
-
-router.delete(
-  "/:chatId/avatar",
-  authMiddleware,
-  chatController.deleteChatAvatar
-);
-router.patch("/:chatId/avatar", authMiddleware, chatController.addChatAvatar);
 
 router.get("/:chatId", authMiddleware, chatController.getChat);
-router.patch("/:chatId", authMiddleware, chatController.updateChat);
+router.patch("/:chatId", authMiddleware, groupController.editGroup);
 router.delete("/:chatId", authMiddleware, chatController.deleteChat);
 router.get("/", authMiddleware, chatController.getAllChats);
 router.post("/", authMiddleware, chatController.createChat);
