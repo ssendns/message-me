@@ -21,15 +21,39 @@ async function request(endpoint, { method = "GET", token, body } = {}) {
   return await res.json().catch(() => ({}));
 }
 
+// auth
+
+export async function signUp({ username, password }) {
+  return request("/sign-up", {
+    method: "POST",
+    body: { username, password },
+  });
+}
+
+export async function logIn({ username, password }) {
+  return request("/log-in", {
+    method: "POST",
+    body: { username, password },
+  });
+}
+
+// user
+
+export function getCurrentUser({ token }) {
+  return request("/user", {
+    token,
+  });
+}
+
 export function getUserByUsername(username) {
-  return request(`/profile/username/${username}`);
+  return request(`/user/username/${username}`);
 }
 
 export function getAllUsers(token) {
-  return request("/profile/all", { token });
+  return request("/user/all", { token });
 }
 
-export function updateUser({
+export function editUser({
   newUsername,
   newPassword,
   avatarUrl,
@@ -44,26 +68,14 @@ export function updateUser({
   if (typeof avatarPublicId !== "undefined")
     payload.avatarPublicId = avatarPublicId;
 
-  return request("/profile/edit", {
+  return request("/user/edit", {
     method: "PATCH",
     token,
     body: payload,
   });
 }
 
-export async function upload(file) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const res = await fetch(`${BASE_URL}/upload`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) throw new Error("upload failed");
-
-  return await res.json();
-}
+// chat
 
 export async function getChatMessages({
   chatId,
@@ -88,57 +100,15 @@ export async function getAllChats(token) {
   });
 }
 
-export async function signUp({ username, password }) {
-  return request("/sign-up", {
-    method: "POST",
-    body: { username, password },
-  });
-}
-
-export async function logIn({ username, password }) {
-  return request("/log-in", {
-    method: "POST",
-    body: { username, password },
-  });
-}
-
-export function updateAvatar({ token, imageUrl, imagePublicId }) {
-  return request("/profile/avatar", {
-    method: "PATCH",
-    token,
-    body: { imageUrl, imagePublicId },
-  });
-}
-
-export function deleteAvatar({ token }) {
-  return request("/profile/avatar", {
-    method: "DELETE",
+export function getChat({ chatId, token }) {
+  return request(`/chats/${chatId}`, {
     token,
   });
 }
 
-export function getUser({ token }) {
-  return request("/profile", {
-    token,
-  });
-}
+// group
 
-export function setChatAvatar({ chatId, token, imageUrl, imagePublicId }) {
-  return request(`/chats/${chatId}/avatar`, {
-    method: "PATCH",
-    token,
-    body: { imageUrl, imagePublicId },
-  });
-}
-
-export function removeChatAvatar({ chatId, token }) {
-  return request(`/chats/${chatId}/avatar`, {
-    method: "DELETE",
-    token,
-  });
-}
-
-export function updateChat({
+export function editGroup({
   chatId,
   token,
   newTitle,
@@ -156,8 +126,18 @@ export function updateChat({
   return request(`/chats/${chatId}`, { method: "PATCH", token, body: payload });
 }
 
-export function getChat({ chatId, token }) {
-  return request(`/chats/${chatId}`, {
-    token,
+// file management
+
+export async function upload(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: "POST",
+    body: formData,
   });
+
+  if (!res.ok) throw new Error("upload failed");
+
+  return await res.json();
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getUser, updateUser, getChat, updateChat } from "../services/api";
+import { getCurrentUser, editUser, getChat, editGroup } from "../services/api";
 import AvatarPicker from "../components/AvatarPicker";
 
 export default function EditPage() {
@@ -47,7 +47,7 @@ export default function EditPage() {
           setInitialAvatar(init);
           setAvatarDraft(init);
         } else {
-          const res = await getUser({ token });
+          const res = await getCurrentUser({ token });
           const user = res?.user;
           if (!user) throw new Error("user not found");
 
@@ -65,7 +65,7 @@ export default function EditPage() {
           setAvatarDraft(init);
 
           localStorage.setItem("username", username);
-          if (avatarUrl) localStorage.setItem("avatarUrl", aUrl);
+          if (avatarUrl) localStorage.setItem("avatarUrl", avatarUrl);
           else localStorage.removeItem("avatarUrl");
         }
       } catch (err) {
@@ -106,7 +106,7 @@ export default function EditPage() {
           body.avatarPublicId = avatarDraft?.publicId ?? null;
         }
 
-        const res = await updateChat({ token, chatId, ...body });
+        const res = await editGroup({ token, chatId, ...body });
         const updated = res?.chat;
         if (updated?.title != null) initialNameRef.current = updated.title;
 
@@ -132,7 +132,7 @@ export default function EditPage() {
           body.avatarPublicId = avatarDraft?.publicId ?? null;
         }
 
-        const res = await updateUser({ ...body, token });
+        const res = await editUser({ ...body, token });
         const user = res?.user;
 
         if (user.username) {
