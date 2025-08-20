@@ -47,6 +47,7 @@ const getAllChats = async (req, res) => {
         id: chat.id,
         type: chat.type,
         title: chat.title,
+        avatarUrl: chat.avatarUrl ?? null,
         participants: chat.participants.map((p) => ({
           id: p.user.id,
           username: p.user.username,
@@ -69,7 +70,7 @@ const getAllChats = async (req, res) => {
   }
 };
 
-const getChatMessages = async (req, res) => {
+const getChat = async (req, res) => {
   try {
     const chatId = Number(req.params.chatId);
     const userId = Number(req.user.userId);
@@ -79,14 +80,65 @@ const getChatMessages = async (req, res) => {
 
     await ensureMember(chatId, userId);
 
-    const messages = await prisma.message.findMany({
-      where: { chatId },
-      orderBy: { createdAt: "asc" },
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: { id: true, username: true, avatarUrl: true },
+            },
+          },
+        },
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            text: true,
+            imageUrl: true,
+            createdAt: true,
+            fromId: true,
+            edited: true,
+            read: true,
+          },
+        },
+      },
     });
 
-    return res.json({ messages });
+    if (!chat) return res.status(404).json({ message: "chat not found" });
+
+    const unreadCount = await prisma.message.count({
+      where: {
+        chatId,
+        read: false,
+        fromId: { not: userId },
+      },
+    });
+
+    const lastMessage = chat.messages[0] || null;
+
+    const result = {
+      id: chat.id,
+      type: chat.type,
+      title: chat.title,
+      avatarUrl: chat.avatarUrl ?? null,
+      avatarPublicId: chat.avatarPublicId ?? null,
+      participants: chat.participants.map((p) => ({
+        id: p.user.id,
+        username: p.user.username,
+        avatarUrl: p.user.avatarUrl ?? null,
+      })),
+      lastMessage,
+      unreadCount,
+    };
+
+    return res.json({ chat: result });
   } catch (err) {
-    return res.status(500).json({ message: "failed to fetch messages" });
+    console.error("getChat failed:", err);
+    return res
+      .status(err.status || 500)
+      .json({ message: err.message || "failed to load chat" });
   }
 };
 
@@ -157,29 +209,63 @@ const createChat = async (req, res) => {
 };
 
 const updateChat = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const chatId = Number(req.params.chatId);
-  const { title } = req.body;
   try {
+    const userId = Number(req.user.userId);
+    const chatId = Number(req.params.chatId);
+
+    const { newTitle } = req.body || {};
+    console.log("PATCH /chats/%s body:", chatId, req.body);
+
     await ensureMember(chatId, userId);
+
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
-      select: { type: true },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        avatarUrl: true,
+        avatarPublicId: true,
+      },
     });
-    if (!chat) return res.status(404).json({ message: "chat not found" });
-    if (chat.type !== "GROUP")
+    if (!chat) return res.status(404).json({ error: "chat not found" });
+
+    if (String(chat.type).toUpperCase() !== "GROUP") {
       return res
         .status(400)
-        .json({ message: "only group chats can be renamed" });
+        .json({ error: "cannot change title/avatar for DIRECT chat" });
+    }
+
+    const dataToUpdate = {};
+
+    if (typeof newTitle !== "undefined") {
+      const t = String(newTitle).trim();
+      if (t.length === 0) {
+        return res.status(400).json({ error: "title cannot be empty" });
+      }
+      if (t !== chat.title) dataToUpdate.title = t;
+    }
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      return res.status(200).json({ chat });
+    }
 
     const updated = await prisma.chat.update({
       where: { id: chatId },
-      data: { title: title?.trim() || null },
-      select: { id: true, title: true },
+      data: dataToUpdate,
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        avatarUrl: true,
+        avatarPublicId: true,
+      },
     });
-    res.json(updated);
+
+    return res.status(200).json({ chat: updated });
   } catch (err) {
-    res.status(500).json({ message: err.message || "failed to update chat" });
+    console.error("updateChat failed:", err);
+    return res.status(500).json({ error: "failed to update chat" });
   }
 };
 
@@ -338,7 +424,7 @@ const deleteChatAvatar = async (req, res) => {
 
 module.exports = {
   getAllChats,
-  getChatMessages,
+  getChat,
   createChat,
   updateChat,
   deleteChat,
