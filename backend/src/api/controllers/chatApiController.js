@@ -212,42 +212,58 @@ const updateChat = async (req, res) => {
   try {
     const userId = Number(req.user.userId);
     const chatId = Number(req.params.chatId);
-
-    const { newTitle } = req.body || {};
-    console.log("PATCH /chats/%s body:", chatId, req.body);
+    const { newTitle, title, avatarUrl, avatarPublicId } = req.body || {};
 
     await ensureMember(chatId, userId);
 
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        avatarUrl: true,
-        avatarPublicId: true,
-      },
+      select: { id: true, type: true, title: true, avatarPublicId: true },
     });
     if (!chat) return res.status(404).json({ error: "chat not found" });
-
     if (String(chat.type).toUpperCase() !== "GROUP") {
-      return res
-        .status(400)
-        .json({ error: "cannot change title/avatar for DIRECT chat" });
+      return res.status(400).json({ error: "cannot edit DIRECT chat" });
     }
 
     const dataToUpdate = {};
-
-    if (typeof newTitle !== "undefined") {
-      const t = String(newTitle).trim();
-      if (t.length === 0) {
-        return res.status(400).json({ error: "title cannot be empty" });
-      }
+    const incomingTitle = typeof newTitle !== "undefined" ? newTitle : title;
+    if (typeof incomingTitle !== "undefined") {
+      const t = String(incomingTitle).trim();
+      if (!t) return res.status(400).json({ error: "title cannot be empty" });
       if (t !== chat.title) dataToUpdate.title = t;
     }
 
+    // аватар (опционально)
+    const hasAvatarUrl = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "avatarUrl"
+    );
+    const hasAvatarPid = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "avatarPublicId"
+    );
+
+    if (hasAvatarUrl || hasAvatarPid) {
+      // если поменялся publicId — можно удалить старый
+      if (
+        chat.avatarPublicId &&
+        avatarPublicId &&
+        chat.avatarPublicId !== avatarPublicId
+      ) {
+        try {
+          await cloudinary.uploader.destroy(chat.avatarPublicId);
+        } catch {}
+      }
+      dataToUpdate.avatarUrl =
+        typeof avatarUrl === "undefined" ? undefined : avatarUrl || null;
+      dataToUpdate.avatarPublicId =
+        typeof avatarPublicId === "undefined"
+          ? undefined
+          : avatarPublicId || null;
+    }
+
     if (Object.keys(dataToUpdate).length === 0) {
-      return res.status(200).json({ chat });
+      return res.status(400).json({ error: "nothing to update" });
     }
 
     const updated = await prisma.chat.update({
@@ -262,7 +278,7 @@ const updateChat = async (req, res) => {
       },
     });
 
-    return res.status(200).json({ chat: updated });
+    return res.json({ chat: updated });
   } catch (err) {
     console.error("updateChat failed:", err);
     return res.status(500).json({ error: "failed to update chat" });

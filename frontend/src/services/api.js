@@ -29,17 +29,20 @@ export function getAllUsers(token) {
   return request("/profile/all", { token });
 }
 
-export function updateUser({ newUsername, newPassword, avatarUrl, token }) {
+export function updateUser({
+  newUsername,
+  newPassword,
+  avatarUrl,
+  avatarPublicId,
+  token,
+}) {
   const payload = {};
-  if (newUsername && newUsername.trim())
-    payload.newUsername = newUsername.trim();
-  if (newPassword && newPassword.trim())
-    payload.newPassword = newPassword.trim();
-  if (avatarUrl && avatarUrl.trim()) payload.avatarUrl = avatarUrl.trim();
-  if (typeof avatarUrl !== "undefined") {
-    payload.avatarUrl =
-      typeof avatarUrl === "string" ? avatarUrl.trim() : avatarUrl;
-  }
+  if (newUsername?.trim()) payload.newUsername = newUsername.trim();
+  if (newPassword?.trim()) payload.newPassword = newPassword.trim();
+
+  if (typeof avatarUrl !== "undefined") payload.avatarUrl = avatarUrl;
+  if (typeof avatarPublicId !== "undefined")
+    payload.avatarPublicId = avatarPublicId;
 
   return request("/profile/edit", {
     method: "PATCH",
@@ -135,17 +138,22 @@ export function removeChatAvatar({ chatId, token }) {
   });
 }
 
-export function updateChat({ chatId, token, newTitle }) {
-  if (!chatId) throw new Error("chatId required");
-  const body = {};
-  if (typeof newTitle === "string" && newTitle.trim()) {
-    body.newTitle = newTitle.trim();
-  }
-  return request(`/chats/${chatId}`, {
-    method: "PATCH",
-    token,
-    body,
-  });
+export function updateChat({
+  chatId,
+  token,
+  newTitle,
+  avatarUrl,
+  avatarPublicId,
+}) {
+  const payload = {};
+  if (typeof newTitle === "string" && newTitle.trim())
+    payload.newTitle = newTitle.trim();
+
+  if (typeof avatarUrl !== "undefined") payload.avatarUrl = avatarUrl;
+  if (typeof avatarPublicId !== "undefined")
+    payload.avatarPublicId = avatarPublicId;
+
+  return request(`/chats/${chatId}`, { method: "PATCH", token, body: payload });
 }
 
 export function getChat({ chatId, token }) {
