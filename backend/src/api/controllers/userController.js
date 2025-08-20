@@ -2,7 +2,22 @@ const prisma = require("../../utils/prisma");
 const bcrypt = require("bcryptjs");
 const cloudinary = require("../../../cloudinary");
 
-const getProfile = async (req, res) => {
+const getAllUsers = async (req, res) => {
+  const userId = req.user.userId;
+  const users = await prisma.user.findMany({
+    where: {
+      id: { not: userId },
+    },
+    select: {
+      id: true,
+      username: true,
+    },
+  });
+
+  res.json(users);
+};
+
+const getCurrentUser = async (req, res) => {
   const userId = req.user.userId;
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -17,28 +32,73 @@ const getProfile = async (req, res) => {
   });
 };
 
-const editProfile = async (req, res) => {
+const getUserByUsername = async (req, res) => {
+  const { username } = req.params;
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true, username: true, avatarUrl: true },
+  });
+
+  if (!user) {
+    return res.status(404).json({ error: "user not found" });
+  }
+
+  res.json(user);
+};
+
+const editUser = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { newUsername, newPassword, avatarUrl, avatarPublicId } =
       req.body || {};
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, avatarPublicId: true },
+    });
+    if (!user) return res.status(404).json({ error: "user not found" });
+
     const dataToUpdate = {};
 
-    if (typeof newUsername === "string" && newUsername.trim() !== "") {
-      dataToUpdate.username = newUsername.trim();
+    if (typeof newUsername !== "undefined") {
+      const username = String(newUsername).trim();
+      if (!username)
+        return res.status(400).json({ error: "username cannot be empty" });
+      if (username !== user.username) dataToUpdate.username = username;
     }
 
     if (typeof newPassword === "string" && newPassword.trim() !== "") {
       dataToUpdate.password = await bcrypt.hash(newPassword.trim(), 10);
     }
 
-    if (typeof avatarUrl !== "undefined") {
-      dataToUpdate.avatarUrl = avatarUrl || null;
-    }
+    const hasAvatarUrl = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "avatarUrl"
+    );
+    const hasAvatarPid = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "avatarPublicId"
+    );
 
-    if (typeof avatarPublicId !== "undefined") {
-      dataToUpdate.avatarPublicId = avatarPublicId || null;
+    if (hasAvatarUrl || hasAvatarPid) {
+      if (
+        user.avatarPublicId &&
+        typeof avatarPublicId === "string" &&
+        avatarPublicId.trim() &&
+        user.avatarPublicId !== avatarPublicId
+      ) {
+        try {
+          await cloudinary.uploader.destroy(user.avatarPublicId);
+        } catch {}
+      }
+
+      dataToUpdate.avatarUrl =
+        typeof avatarUrl === "undefined" ? undefined : avatarUrl || null;
+
+      dataToUpdate.avatarPublicId =
+        typeof avatarPublicId === "undefined"
+          ? undefined
+          : avatarPublicId || null;
     }
 
     if (Object.keys(dataToUpdate).length === 0) {
@@ -70,118 +130,10 @@ const deleteProfile = async (req, res) => {
   res.status(204).send();
 };
 
-const getUserByUsername = async (req, res) => {
-  const { username } = req.params;
-  const user = await prisma.user.findUnique({
-    where: { username },
-    select: { id: true, username: true, avatarUrl: true },
-  });
-
-  if (!user) {
-    return res.status(404).json({ error: "user not found" });
-  }
-
-  res.json(user);
-};
-
-const getAllUsers = async (req, res) => {
-  const userId = req.user.userId;
-  const users = await prisma.user.findMany({
-    where: {
-      id: { not: userId },
-    },
-    select: {
-      id: true,
-      username: true,
-    },
-  });
-
-  res.json(users);
-};
-
-const addAvatar = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const { imageUrl, imagePublicId } = req.body || {};
-
-  if (!imageUrl || !imagePublicId) {
-    return res
-      .status(400)
-      .json({ message: "imageUrl and imagePublicId are required" });
-  }
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { avatarPublicId: true },
-    });
-
-    if (user?.avatarPublicId && user.avatarPublicId !== imagePublicId) {
-      try {
-        await cloudinary.uploader.destroy(user.avatarPublicId);
-      } catch (e) {
-        console.warn("avatar destroy failed:", e);
-      }
-    }
-
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { avatarUrl: imageUrl, avatarPublicId: imagePublicId },
-      select: {
-        id: true,
-        username: true,
-        avatarUrl: true,
-        avatarPublicId: true,
-      },
-    });
-
-    res.json(updated);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "failed to add avatar" });
-  }
-};
-
-const deleteAvatar = async (req, res) => {
-  const userId = Number(req.user.userId);
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { avatarPublicId: true },
-    });
-
-    if (user?.avatarPublicId) {
-      try {
-        await cloudinary.uploader.destroy(user.avatarPublicId, {
-          invalidate: true,
-        });
-      } catch (e) {
-        console.warn("avatar destroy failed:", e);
-      }
-    }
-
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { avatarUrl: null, avatarPublicId: null },
-      select: {
-        id: true,
-        username: true,
-        avatarUrl: true,
-        avatarPublicId: true,
-      },
-    });
-
-    res.json(updated);
-  } catch (e) {
-    res.status(500).json({ message: "failed to remove avatar" });
-  }
-};
-
 module.exports = {
-  getProfile,
-  editProfile,
+  getCurrentUser,
+  editUser,
   deleteProfile,
   getUserByUsername,
   getAllUsers,
-  addAvatar,
-  deleteAvatar,
 };
