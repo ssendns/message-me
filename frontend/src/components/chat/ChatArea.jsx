@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ChatBox from "./ChatBox";
 import ImageSendModal from "./ImageSendModal";
 import useChatMessages from "../../hooks/useChatMessages";
@@ -21,6 +22,7 @@ export default function ChatArea({
   const [pickedFile, setPickedFile] = useState(null);
   const fileInputRef = useRef(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  const navigate = useNavigate();
 
   const isGroup = useMemo(
     () => String(type || "").toUpperCase() === "GROUP",
@@ -31,14 +33,7 @@ export default function ChatArea({
     if (isGroup) setInfoOpen(true);
   }, [isGroup]);
 
-  const handleEditGroup = useCallback(
-    () => {
-      //
-    },
-    [
-      //
-    ]
-  );
+  const handleEditGroup = useCallback(() => navigate(`/chats/${chatId}/edit`));
 
   const { messages, loadingOlder, hasMore, loadOlder, firstUnreadId } =
     useChatMessages({

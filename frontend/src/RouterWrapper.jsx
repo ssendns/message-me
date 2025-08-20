@@ -10,6 +10,7 @@ export default function RouterWrapper() {
     { path: "/sign-up", element: <SignUpPage /> },
     { path: "/log-in", element: <LogInPage /> },
     { path: "/edit", element: <EditAccountPage /> },
+    { path: "/chats/:chatId/edit", element: <EditAccountPage /> },
   ];
   const router = createBrowserRouter(routes);
   return <RouterProvider router={router} />;
