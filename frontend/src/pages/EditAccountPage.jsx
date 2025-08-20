@@ -1,58 +1,85 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { updateUser, getUser } from "../services/api";
+import { useNavigate, useParams } from "react-router-dom";
+import { getUser, updateUser, getChat, updateChat } from "../services/api";
 import AvatarPicker from "../components/AvatarPicker";
+import ChatAvatarPicker from "../components/ChatAvatarPicker";
 
 export default function EditAccountPage() {
   const token = localStorage.getItem("token");
-  const initialUsername = localStorage.getItem("username");
   const navigate = useNavigate();
+  const { chatId } = useParams();
+  const isGroupMode = Boolean(chatId);
 
-  const [username, setUsername] = useState(initialUsername || "user");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const initialUsernameRef = useRef("");
-  initialUsernameRef.current = initialUsername;
+  const initialNameRef = useRef("");
   const initialAvatarRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       if (!token) {
-        setLoadingProfile(false);
+        setLoading(false);
         return;
       }
+
       try {
-        const userInfo = await getUser({ token });
-        if (cancelled) return;
-        const avatar = userInfo?.user.avatarUrl || "";
-        initialAvatarRef.current = avatar;
-        setAvatarUrl(avatar);
-        if (avatar) localStorage.setItem("avatarUrl", avatar);
-        else localStorage.removeItem("avatarUrl");
+        if (isGroupMode) {
+          const chat = await getChat({ token, chatId });
+          const c = chat?.chat ?? chat;
+          if (!c) throw new Error("chat not found");
+
+          const title = c.title || "";
+          const aUrl = c.avatarUrl || "";
+
+          initialNameRef.current = title;
+          initialAvatarRef.current = aUrl;
+
+          setName(title);
+          setAvatarUrl(aUrl);
+        } else {
+          const resp = await getUser({ token });
+          const u = resp?.user;
+          if (!u) throw new Error("user not found");
+
+          const uname = u.username || "user";
+          const aUrl = u.avatarUrl || "";
+
+          initialNameRef.current = uname;
+          initialAvatarRef.current = aUrl;
+
+          setName(uname);
+          setAvatarUrl(aUrl);
+
+          localStorage.setItem("username", uname);
+          if (aUrl) localStorage.setItem("avatarUrl", aUrl);
+          else localStorage.removeItem("avatarUrl");
+        }
       } catch (e) {
-        console.error("getUser failed:", e);
+        console.error("load failed:", e);
       } finally {
-        if (!cancelled) setLoadingProfile(false);
+        if (!cancelled) setLoading(false);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, isGroupMode, chatId]);
 
   const hasChanges = useMemo(() => {
-    const nameChanged = username.trim() !== initialUsernameRef.current;
-    const passChanged = password.trim().length > 0;
+    const nameChanged = name.trim() !== initialNameRef.current;
+    const passChanged = !isGroupMode && password.trim().length > 0;
     const avatarChanged =
-      (avatarUrl || "") !== (initialAvatarRef.current || "");
+      !isGroupMode && (avatarUrl || "") !== (initialAvatarRef.current || "");
     return nameChanged || passChanged || avatarChanged;
-  }, [username, password, avatarUrl]);
+  }, [name, password, avatarUrl, isGroupMode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,53 +91,77 @@ export default function EditAccountPage() {
       alert("nothing to update");
       return;
     }
+    if (isGroupMode && !name.trim()) {
+      alert("group title cannot be empty");
+      return;
+    }
 
     setSaving(true);
     try {
-      const payload = {};
-
-      if (username.trim() !== initialUsernameRef.current) {
-        payload.newUsername = username.trim();
-      }
-      if (password.trim()) {
-        payload.newPassword = password.trim();
-      }
-      if ((avatarUrl || "") !== (initialAvatarRef.current || "")) {
-        payload.avatarUrl = avatarUrl?.trim() ?? "";
-      }
-
-      const resp = await updateUser({ ...payload, token });
-      const updated = resp?.user || {};
-
-      if (typeof updated.username === "string") {
-        initialUsernameRef.current = updated.username;
-        setUsername(updated.username);
-        localStorage.setItem("username", updated.username);
-      }
-      if ("avatarUrl" in updated) {
-        initialAvatarRef.current = updated.avatarUrl || "";
-        setAvatarUrl(updated.avatarUrl || "");
-        if (updated.avatarUrl) {
-          localStorage.setItem("avatarUrl", updated.avatarUrl);
-        } else {
-          localStorage.removeItem("avatarUrl");
+      if (isGroupMode) {
+        const payload = {};
+        if (name.trim() !== initialNameRef.current) {
+          payload.newTitle = name.trim();
         }
-      }
+        if (Object.keys(payload).length > 0) {
+          const resp = await updateChat({
+            token,
+            chatId,
+            ...payload,
+          });
+          const updated = resp?.chat ?? resp;
+          if (updated?.title != null) {
+            initialNameRef.current = updated.title;
+            setName(updated.title);
+          }
+        }
+        alert("group updated");
+        navigate("/");
+      } else {
+        const payload = {};
+        if (name.trim() !== initialNameRef.current) {
+          payload.newUsername = name.trim();
+        }
+        if (password.trim()) {
+          payload.newPassword = password.trim();
+        }
+        if ((avatarUrl || "") !== (initialAvatarRef.current || "")) {
+          payload.avatarUrl = avatarUrl?.trim() ?? "";
+        }
 
-      alert("account updated successfully");
-      navigate("/");
+        const resp = await updateUser({ ...payload, token });
+        const updated = resp?.user || {};
+
+        if (typeof updated.username === "string") {
+          initialNameRef.current = updated.username;
+          setName(updated.username);
+          localStorage.setItem("username", updated.username);
+        }
+        if ("avatarUrl" in updated) {
+          initialAvatarRef.current = updated.avatarUrl || "";
+          setAvatarUrl(updated.avatarUrl || "");
+          if (updated.avatarUrl) {
+            localStorage.setItem("avatarUrl", updated.avatarUrl);
+          } else {
+            localStorage.removeItem("avatarUrl");
+          }
+        }
+
+        alert("account updated successfully");
+        navigate("/");
+      }
     } catch (err) {
       console.error("update failed:", err);
-      alert(err.message || "error updating account.");
+      alert(err.message || "update failed");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loadingProfile) {
+  if (loading) {
     return (
       <main className="min-h-screen grid place-items-center text-muted">
-        loading profile...
+        loading...
       </main>
     );
   }
@@ -118,36 +169,56 @@ export default function EditAccountPage() {
   return (
     <main className="min-h-screen bg-background text-foreground font-poppins p-layout max-w-screen mx-auto">
       <div className="max-w-md mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold text-primary">edit account</h1>
+        <h1 className="text-2xl font-semibold text-primary">
+          {isGroupMode ? "edit group" : "edit account"}
+        </h1>
 
-        <AvatarPicker
-          username={username}
-          initialUrl={avatarUrl}
-          token={token}
-          onChanged={(url) => setAvatarUrl(url ?? "")}
-        />
+        {isGroupMode ? (
+          <ChatAvatarPicker
+            chatId={chatId}
+            token={token}
+            title={name}
+            initialUrl={avatarUrl}
+            onChanged={(url) => {
+              setAvatarUrl(url ?? "");
+              initialAvatarRef.current = url ?? "";
+            }}
+          />
+        ) : (
+          <AvatarPicker
+            username={name}
+            initialUrl={avatarUrl}
+            token={token}
+            onChanged={(url) => setAvatarUrl(url ?? "")}
+          />
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block mb-1">username</label>
+            <label className="block mb-1">
+              {isGroupMode ? "group title" : "username"}
+            </label>
             <input
               type="text"
               className="w-full border border-muted rounded px-4 py-2"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={isGroupMode ? "enter group title" : "enter username"}
             />
           </div>
 
-          <div>
-            <label className="block mb-1">new password</label>
-            <input
-              type="password"
-              className="w-full border border-muted rounded px-4 py-2"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="leave blank to keep current"
-            />
-          </div>
+          {!isGroupMode && (
+            <div>
+              <label className="block mb-1">new password</label>
+              <input
+                type="password"
+                className="w-full border border-muted rounded px-4 py-2"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="leave blank to keep current"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
