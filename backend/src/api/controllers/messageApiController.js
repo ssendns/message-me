@@ -14,7 +14,7 @@ const MESSAGE_SELECT = {
   updatedAt: true,
 };
 
-const getUserMessages = async (req, res) => {
+const getChatMessages = async (req, res) => {
   const userId = Number(req.user.userId);
   const chatId = Number(req.params.chatId);
   const limit = Math.min(Number(req.query.limit) || 30, 100);
@@ -185,7 +185,7 @@ const deleteMessage = async (req, res) => {
 };
 
 module.exports = {
-  getUserMessages,
+  getChatMessages,
   createMessage,
   updateMessage,
   deleteMessage,

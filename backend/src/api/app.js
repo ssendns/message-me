@@ -21,7 +21,7 @@ app.get("/test", async (req, res) => {
   res.json(users);
 });
 
-app.use("/profile", userRouter);
+app.use("/user", userRouter);
 app.use("/chats/:chatId/messages", messageRouter);
 app.use("/chats", chatRouter);
 app.use("/upload", uploadRouter);
