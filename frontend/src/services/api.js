@@ -1,7 +1,7 @@
 const BASE_URL = "http://localhost:3000";
 
 async function request(endpoint, { method = "GET", token, body } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = {};
   if (body && !(body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
@@ -10,12 +10,12 @@ async function request(endpoint, { method = "GET", token, body } = {}) {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body && !(body instanceof FormData) ? JSON.stringify(body) : body,
   });
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || "request failed");
+    throw new Error(error.error || error.message || "request failed");
   }
 
   return await res.json().catch(() => ({}));
@@ -122,7 +122,7 @@ export function getUser({ token }) {
 
 export function setChatAvatar({ chatId, token, imageUrl, imagePublicId }) {
   return request(`/chats/${chatId}/avatar`, {
-    method: "POST",
+    method: "PATCH",
     token,
     body: { imageUrl, imagePublicId },
   });
@@ -131,6 +131,25 @@ export function setChatAvatar({ chatId, token, imageUrl, imagePublicId }) {
 export function removeChatAvatar({ chatId, token }) {
   return request(`/chats/${chatId}/avatar`, {
     method: "DELETE",
+    token,
+  });
+}
+
+export function updateChat({ chatId, token, newTitle }) {
+  if (!chatId) throw new Error("chatId required");
+  const body = {};
+  if (typeof newTitle === "string" && newTitle.trim()) {
+    body.newTitle = newTitle.trim();
+  }
+  return request(`/chats/${chatId}`, {
+    method: "PATCH",
+    token,
+    body,
+  });
+}
+
+export function getChat({ chatId, token }) {
+  return request(`/chats/${chatId}`, {
     token,
   });
 }
