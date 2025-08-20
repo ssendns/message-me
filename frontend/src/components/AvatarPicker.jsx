@@ -39,10 +39,12 @@ export default function AvatarPicker({
   }, [onChange]);
 
   return (
-    <div className="flex items-center gap-4">
-      <Avatar avatarUrl={localUrl} username={label} size={72} />
+    <div className="w-full flex flex-col items-center text-center">
+      <div className="relative mb-3">
+        <Avatar avatarUrl={localUrl} username={label} size={128} />
+      </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex gap-2">
         <input
           ref={fileRef}
           type="file"
@@ -55,13 +57,13 @@ export default function AvatarPicker({
           type="button"
           onClick={pick}
           disabled={loading}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-50 active:scale-[0.98] transition disabled:opacity-50"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white shadow-sm hover:bg-gray-50 text-sm transition disabled:opacity-50"
           aria-label={localUrl ? "change avatar" : "upload avatar"}
         >
           {loading ? (
-            <Loader2 size={16} className="animate-spin" />
+            <Loader2 size={14} className="animate-spin" />
           ) : (
-            <Camera size={16} />
+            <Camera size={14} />
           )}
           {localUrl ? "change" : "upload"}
         </button>
@@ -71,10 +73,10 @@ export default function AvatarPicker({
             type="button"
             onClick={remove}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-red-600 active:scale-[0.98] transition disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-red-600 text-sm transition disabled:opacity-50"
             aria-label="remove avatar"
           >
-            <X size={16} />
+            <X size={14} />
             remove
           </button>
         )}
