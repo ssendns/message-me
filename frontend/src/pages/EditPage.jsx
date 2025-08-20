@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { getCurrentUser, editUser, getChat, editGroup } from "../services/api";
 import AvatarPicker from "../components/AvatarPicker";
 import { ArrowLeft } from "lucide-react";
+import { buildUserPayload, buildGroupPayload } from "../utils/editUtils";
 
 export default function EditPage() {
   const token = localStorage.getItem("token");
@@ -96,13 +97,13 @@ export default function EditPage() {
     setSaving(true);
     try {
       if (isGroupMode) {
-        const body = {};
-        if (name.trim() !== initialNameRef.current) body.newTitle = name.trim();
-        if (JSON.stringify(avatarDraft) !== JSON.stringify(initialAvatar)) {
-          body.avatarUrl = avatarDraft?.url ?? null;
-          body.avatarPublicId = avatarDraft?.publicId ?? null;
-        }
-
+        const body = buildGroupPayload({
+          name,
+          initialName: initialNameRef.current,
+          avatarDraft,
+          initialAvatar,
+        });
+        if (!Object.keys(body).length) return alert("nothing to update");
         const res = await editGroup({ token, chatId, ...body });
         const updated = res?.chat;
         if (updated?.title != null) initialNameRef.current = updated.title;
@@ -119,14 +120,14 @@ export default function EditPage() {
         alert("group updated");
         navigate("/");
       } else {
-        const body = {};
-        if (name.trim() !== initialNameRef.current)
-          body.newUsername = name.trim();
-        if (password.trim()) body.newPassword = password.trim();
-        if (JSON.stringify(avatarDraft) !== JSON.stringify(initialAvatar)) {
-          body.avatarUrl = avatarDraft?.url ?? null;
-          body.avatarPublicId = avatarDraft?.publicId ?? null;
-        }
+        const body = buildUserPayload({
+          name,
+          password,
+          initialName: initialNameRef.current,
+          avatarDraft,
+          initialAvatar,
+        });
+        if (!Object.keys(body).length) return alert("nothing to update");
 
         const res = await editUser({ ...body, token });
         const user = res?.user || {};
