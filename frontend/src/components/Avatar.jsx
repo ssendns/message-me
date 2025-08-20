@@ -17,7 +17,7 @@ export default function Avatar({
 
   return (
     <div
-      className="relative inline-block rounded-full border-2 border-gray-150"
+      className="relative inline-block rounded-full border border-gray-150"
       style={{ width: size, height: size }}
       aria-label="avatar"
     >
