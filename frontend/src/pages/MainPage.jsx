@@ -26,6 +26,7 @@ export default function MainPage() {
   const handleChatSelect = useCallback((chat) => setSelectedChat(chat), []);
   const handleBack = useCallback(() => setSelectedChat(null), []);
   const handleEdit = () => navigate("/edit");
+  const handleCreate = () => navigate("/create");
 
   const handleLogout = useCallback(() => {
     localStorage.clear();
@@ -105,6 +106,7 @@ export default function MainPage() {
             username={username}
             onLogout={handleLogout}
             onEdit={handleEdit}
+            onCreate={handleCreate}
             isOpen={sidebarOpen}
           />
         </div>

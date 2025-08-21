@@ -1,4 +1,10 @@
-export default function Sidebar({ username, onLogout, onEdit, isOpen }) {
+export default function Sidebar({
+  username,
+  onLogout,
+  onEdit,
+  onCreate,
+  isOpen,
+}) {
   return (
     <aside
       className={`bg-white shadow-md p-4 flex flex-col fixed top-0 left-0 h-full z-30 transition-transform duration-300 ${
@@ -22,6 +28,13 @@ export default function Sidebar({ username, onLogout, onEdit, isOpen }) {
           className="w-full text-left px-4 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200"
         >
           log out
+        </button>
+        <div className="h-px bg-gray-100 my-6" />
+        <button
+          onClick={onCreate}
+          className="w-full text-left px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+        >
+          create group
         </button>
       </div>
     </aside>
