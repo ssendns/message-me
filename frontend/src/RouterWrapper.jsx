@@ -3,6 +3,7 @@ import LogInPage from "./pages/LogInPage";
 import SignUpPage from "./pages/SignUpPage";
 import MainPage from "./pages/MainPage";
 import EditPage from "./pages/EditPage";
+import CreateGroupPage from "./pages/CreateGroupPage";
 
 export default function RouterWrapper() {
   const routes = [
@@ -11,6 +12,7 @@ export default function RouterWrapper() {
     { path: "/log-in", element: <LogInPage /> },
     { path: "/edit", element: <EditPage /> },
     { path: "/chats/:chatId/edit", element: <EditPage /> },
+    { path: "/create", element: <CreateGroupPage /> },
   ];
   const router = createBrowserRouter(routes);
   return <RouterProvider router={router} />;
