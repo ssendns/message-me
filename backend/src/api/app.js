@@ -11,6 +11,7 @@ const userRouter = require("./routes/userRouter");
 const uploadRouter = require("./routes/uploadRouter");
 const chatRouter = require("./routes/chatRouter");
 const messageRouter = require("./routes/messageRouter");
+const participantRouter = require("./routes/participantRouter");
 
 app.use(cors());
 app.use(express.json());
@@ -23,6 +24,7 @@ app.get("/test", async (req, res) => {
 
 app.use("/user", userRouter);
 app.use("/chats/:chatId/messages", messageRouter);
+app.use("/chats/:chatId/participants", participantRouter);
 app.use("/chats", chatRouter);
 app.use("/upload", uploadRouter);
 app.use("/", authRouter);

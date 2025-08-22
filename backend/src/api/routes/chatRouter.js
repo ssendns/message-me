@@ -4,24 +4,6 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const chatController = require("../controllers/chatApiController");
 const groupController = require("../controllers/groupController");
 
-router.delete(
-  "/:chatId/participants/:userId",
-  authMiddleware,
-  groupController.removeParticipant
-);
-router.post(
-  "/:chatId/participants",
-  authMiddleware,
-  groupController.addParticipant
-);
-
-router.post("/:chatId/admins", authMiddleware, groupController.promoteToAdmin);
-router.delete(
-  "/:chatId/admins/:userId",
-  authMiddleware,
-  groupController.demoteFromAdmin
-);
-
 router.post("/:chatId/leave", authMiddleware, groupController.leaveGroup);
 
 router.get("/:chatId", authMiddleware, chatController.getChat);
