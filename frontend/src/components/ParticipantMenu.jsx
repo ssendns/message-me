@@ -1,4 +1,4 @@
-import { UserPlus, Shield, UserMinus } from "lucide-react";
+import { Shield, UserMinus } from "lucide-react";
 
 export default function ParticipantMenu({
   canPromote,
@@ -23,7 +23,7 @@ export default function ParticipantMenu({
           onClick={onPromote}
           className="flex items-center gap-2 px-4 py-2 text-black hover:bg-blue-50 cursor-pointer"
         >
-          <UserPlus size={16} />
+          <Shield size={16} />
           make admin
         </li>
       )}

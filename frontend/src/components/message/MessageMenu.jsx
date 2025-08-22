@@ -2,7 +2,7 @@ import { Pencil, Trash2, Copy } from "lucide-react";
 
 export default function MessageMenu({
   isOwn,
-  shouldOpenUpwards,
+  openUpwards,
   onEdit,
   onDelete,
   onCopy,
@@ -12,7 +12,7 @@ export default function MessageMenu({
       role="menu"
       tabIndex={-1}
       className={`absolute z-50 w-40 bg-white border border-gray-200 rounded-lg shadow-xl text-sm overflow-hidden animate-fade-in
-        ${shouldOpenUpwards ? "bottom-full mb-1" : "top-full mt-1"} 
+        ${openUpwards ? "bottom-full mb-1" : "top-full mt-1"} 
         ${isOwn ? "right-0" : "left-0"}`}
     >
       {isOwn && (

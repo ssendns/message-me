@@ -3,7 +3,7 @@ import useSocket from "../../hooks/useSocket";
 import MessageMenu from "./MessageMenu";
 import EditInput from "./EditInput";
 import MessageContent from "./MessageContent";
-import useMessageMenu from "../../hooks/useMessageMenu";
+import useMenu from "../../hooks/useMenu";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 
@@ -20,8 +20,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
   const { socket, isReady } = useSocket();
   const fileInputRef = useRef(null);
   const { uploadImage, loading: uploading } = useUploadImage();
-  const { messageRef, menuOpen, shouldOpenUpwards, openMenu, closeMenu } =
-    useMessageMenu();
+  const { rowRef, open, openUpwards, openMenu, closeMenu } = useMenu();
 
   const time = useMemo(() => {
     return (
@@ -112,7 +111,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"} my-2`}>
       <div
-        ref={messageRef}
+        ref={rowRef}
         onContextMenu={handleContextMenu}
         className={`relative px-4 py-2 max-w-xs break-words rounded-xl ${
           isOwn
@@ -197,10 +196,10 @@ export default function Message({ message, currentUserId, authorName = null }) {
           />
         )}
 
-        {menuOpen && (
+        {open && (
           <MessageMenu
             isOwn={isOwn}
-            shouldOpenUpwards={shouldOpenUpwards}
+            openUpwards={openUpwards}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onCopy={handleCopy}

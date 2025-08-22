@@ -1,6 +1,6 @@
 import Avatar from "./Avatar";
 import { MoreVertical, Shield, Crown } from "lucide-react";
-import useParticipantMenu from "../hooks/useParticipantMenu";
+import useMenu from "../hooks/useMenu";
 import ParticipantMenu from "./ParticipantMenu";
 
 const isOwner = (r) => r === "OWNER";
@@ -16,8 +16,7 @@ export default function ParticipantItem({
   onDemote,
   onRemove,
 }) {
-  const { rowRef, open, openUpwards, toggleMenu, closeMenu } =
-    useParticipantMenu();
+  const { rowRef, open, openUpwards, toggleMenu, closeMenu } = useMenu();
 
   return (
     <div

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function useParticipantMenu() {
+export default function useMenu() {
   const rowRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [openUpwards, setOpenUpwards] = useState(false);
@@ -17,11 +17,11 @@ export default function useParticipantMenu() {
   }, [open]);
 
   useEffect(() => {
-    const onDocClick = (e) => {
+    const handleClickOutside = (e) => {
       if (!rowRef.current?.contains(e.target)) closeMenu();
     };
-    document.addEventListener("click", onDocClick);
-    return () => document.removeEventListener("click", onDocClick);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
   return { rowRef, open, openUpwards, openMenu, closeMenu, toggleMenu };
