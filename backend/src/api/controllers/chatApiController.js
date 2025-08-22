@@ -9,7 +9,8 @@ const getAllChats = async (req, res) => {
       where: { participants: { some: { userId } } },
       include: {
         participants: {
-          include: {
+          select: {
+            role: true,
             user: { select: { id: true, username: true, avatarUrl: true } },
           },
         },
@@ -51,6 +52,7 @@ const getAllChats = async (req, res) => {
           id: p.user.id,
           username: p.user.username,
           avatarUrl: p.user.avatarUrl ?? null,
+          role: p.role,
         })),
         lastMessage,
         unreadCount: unreadMap.get(chat.id) || 0,
@@ -83,7 +85,8 @@ const getChat = async (req, res) => {
       where: { id: chatId },
       include: {
         participants: {
-          include: {
+          select: {
+            role: true,
             user: {
               select: { id: true, username: true, avatarUrl: true },
             },
@@ -127,6 +130,7 @@ const getChat = async (req, res) => {
         id: p.user.id,
         username: p.user.username,
         avatarUrl: p.user.avatarUrl ?? null,
+        role: p.role,
       })),
       lastMessage,
       unreadCount,
@@ -190,11 +194,16 @@ const createChat = async (req, res) => {
           .status(400)
           .json({ message: "group must have at least 2 participants" });
 
+      const participantsCreate = ids.map((id) => ({
+        userId: id,
+        role: id === userId ? "OWNER" : "MEMBER",
+      }));
+
       const chat = await prisma.chat.create({
         data: {
           type: "GROUP",
           title: title.trim(),
-          participants: { create: ids.map((id) => ({ userId: id })) },
+          participants: { create: participantsCreate },
         },
         select: { id: true },
       });
@@ -207,21 +216,8 @@ const createChat = async (req, res) => {
   }
 };
 
-const deleteChat = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const chatId = Number(req.params.chatId);
-  try {
-    await ensureMember(chatId, userId);
-    await prisma.chat.delete({ where: { id: chatId } });
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(e.status || 500).json({ message: e.message || "failed" });
-  }
-};
-
 module.exports = {
   getAllChats,
   getChat,
   createChat,
-  deleteChat,
 };
