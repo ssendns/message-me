@@ -138,6 +138,36 @@ export function editGroup({
   return request(`/chats/${chatId}`, { method: "PATCH", token, body: payload });
 }
 
+export function addParticipantToChat({ chatId, userId, token }) {
+  return request(`/chats/${chatId}/participants`, {
+    method: "POST",
+    token,
+    body: { userId },
+  });
+}
+
+export function removeParticipantFromChat({ chatId, userId, token }) {
+  return request(`/chats/${chatId}/participants/${userId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function promoteToAdmin({ chatId, userId, token }) {
+  return request(`/chats/${chatId}/admins`, {
+    method: "POST",
+    token,
+    body: { userId },
+  });
+}
+
+export function demoteFromAdmin({ chatId, userId, token }) {
+  return request(`/chats/${chatId}/admins/${userId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 // file management
 
 export async function upload(file) {
