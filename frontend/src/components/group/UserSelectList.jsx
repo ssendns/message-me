@@ -1,17 +1,6 @@
 import { useMemo, useState } from "react";
-import Avatar from "./Avatar";
+import Avatar from "../avatar/Avatar";
 
-/**
- * Универсальный список выбора пользователей с поиском.
- *
- * props:
- * - users: [{ id, username, avatarUrl }]
- * - selected: Set<number> — выбранные id
- * - onToggle: (id:number) => void
- * - excludeIds?: Iterable<number> — кого скрыть (например, уже участники + ты)
- * - placeholder?: string
- * - maxHeight?: string (tailwind class)
- */
 export default function UserSelectList({
   users = [],
   selected,

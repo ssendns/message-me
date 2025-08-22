@@ -6,7 +6,7 @@ import useChatMessages from "../../hooks/useChatMessages";
 import useSendMessage from "../../hooks/useSendMessage";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Paperclip, Info } from "lucide-react";
-import GroupInfoDrawer from "../GroupInfoDrawer";
+import GroupInfoDrawer from "../group/GroupInfoDrawer";
 
 export default function ChatArea({
   displayName,

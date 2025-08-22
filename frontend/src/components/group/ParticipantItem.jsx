@@ -1,6 +1,6 @@
-import Avatar from "./Avatar";
+import Avatar from "../avatar/Avatar";
 import { MoreVertical, Shield, Crown } from "lucide-react";
-import useMenu from "../hooks/useMenu";
+import useMenu from "../../hooks/useMenu";
 import ParticipantMenu from "./ParticipantMenu";
 
 const isOwner = (r) => r === "OWNER";

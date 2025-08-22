@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Camera, X, Loader2 } from "lucide-react";
-import useUploadImage from "../hooks/useUploadImage";
+import useUploadImage from "../../hooks/useUploadImage";
 import Avatar from "./Avatar";
 
 export default function AvatarPicker({

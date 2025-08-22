@@ -8,10 +8,10 @@ import {
   getAllUsers,
   addParticipantToChat,
 } from "../services/api";
-import AvatarPicker from "../components/AvatarPicker";
+import AvatarPicker from "../components/avatar/AvatarPicker";
 import { ArrowLeft } from "lucide-react";
 import { buildUserPayload, buildGroupPayload } from "../utils/editUtils";
-import UserSelectList from "../components/UserSelectList";
+import UserSelectList from "../components/group//UserSelectList";
 
 export default function EditPage() {
   const token = localStorage.getItem("token");

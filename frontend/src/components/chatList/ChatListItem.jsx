@@ -1,4 +1,4 @@
-import Avatar from "../Avatar";
+import Avatar from "../avatar/Avatar";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
 
 export default function ChatListItem({

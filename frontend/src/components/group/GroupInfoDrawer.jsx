@@ -5,9 +5,8 @@ import {
   demoteFromAdmin,
   leaveGroup,
   deleteGroup,
-} from "../services/api";
+} from "../../services/api";
 import ParticipantItem from "./ParticipantItem";
-import { Eraser } from "lucide-react";
 
 const canEditGroup = (r) => r === "OWNER" || r === "ADMIN";
 
