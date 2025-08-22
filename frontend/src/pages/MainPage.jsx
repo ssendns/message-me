@@ -154,6 +154,7 @@ export default function MainPage() {
                 chatId={selectedChat.id}
                 displayName={selectedChat.displayName}
                 currentUserId={currentUserId}
+                currentUserRole={selectedChat.currentUserRole}
                 participants={selectedChat.participants}
                 type={selectedChat.type}
                 onBack={handleBack}
