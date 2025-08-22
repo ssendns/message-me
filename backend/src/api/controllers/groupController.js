@@ -5,6 +5,7 @@ const {
   getRole,
   isAdminOrOwner,
 } = require("../../utils/chatUtils");
+const { createSystemMessage } = require("../../utils/systemMessage");
 
 const deleteGroup = async (req, res) => {
   const userId = Number(req.user.userId);
@@ -107,149 +108,38 @@ const editGroup = async (req, res) => {
       },
     });
 
+    try {
+      if (
+        typeof dataToUpdate.title !== "undefined" &&
+        dataToUpdate.title !== chat.title
+      ) {
+        await createSystemMessage(prisma, {
+          chatId,
+          action: "title_changed",
+          actorId: userId,
+          extra: { fromTitle: chat.title, toTitle: dataToUpdate.title },
+        });
+      }
+
+      const avatarTouched =
+        Object.prototype.hasOwnProperty.call(dataToUpdate, "avatarUrl") ||
+        Object.prototype.hasOwnProperty.call(dataToUpdate, "avatarPublicId");
+      if (avatarTouched) {
+        await createSystemMessage(prisma, {
+          chatId,
+          action: "avatar_changed",
+          actorId: userId,
+          extra: { to: updated.avatarUrl || null },
+        });
+      }
+    } catch (err) {
+      console.error("system message (editGroup) failed:", err);
+    }
+
     return res.json({ chat: updated });
   } catch (err) {
     console.error("updateChat failed:", err);
     return res.status(500).json({ error: "failed to update chat" });
-  }
-};
-
-const addParticipant = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const chatId = Number(req.params.chatId);
-  const targetId = Number(req.body.userId);
-  try {
-    await ensureMember(chatId, userId);
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
-      select: { type: true },
-    });
-    if (!chat) return res.status(404).json({ message: "chat not found" });
-    if (chat.type !== "GROUP")
-      return res.status(400).json({ message: "not group chat" });
-
-    const user = await getRole(chatId, userId);
-    if (!user || !isAdminOrOwner(user.role)) {
-      return res.status(403).json({ error: "insufficient permissions" });
-    }
-
-    await prisma.chatParticipant.upsert({
-      where: { chatId_userId: { chatId, userId: targetId } },
-      create: { chatId, userId: targetId, role: "MEMBER" },
-      update: {},
-    });
-    res.json({ ok: true });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: err.message || "failed to add participant" });
-  }
-};
-
-const removeParticipant = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const chatId = Number(req.params.chatId);
-  const targetId = Number(req.params.userId);
-  try {
-    await ensureMember(chatId, userId);
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
-      select: { type: true },
-    });
-    if (!chat) return res.status(404).json({ message: "chat not found" });
-    if (chat.type !== "GROUP")
-      return res.status(400).json({ message: "not group chat" });
-
-    const user = await getRole(chatId, userId);
-    if (!user || !isAdminOrOwner(user.role)) {
-      return res.status(403).json({ error: "insufficient permissions" });
-    }
-
-    const target = await prisma.chatParticipant.findUnique({
-      where: { chatId_userId: { chatId, userId: targetId } },
-      select: { role: true },
-    });
-    if (!target) return res.json({ ok: true });
-
-    if (target.role === "OWNER") {
-      return res.status(400).json({ message: "cannot remove owner" });
-    }
-    if (user.role === "ADMIN" && target.role === "ADMIN") {
-      return res
-        .status(403)
-        .json({ message: "admin cannot remove another admin" });
-    }
-
-    await prisma.chatParticipant.delete({
-      where: { chatId_userId: { chatId, userId: targetId } },
-    });
-    res.json({ ok: true });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: err.message || "failed to remove participant" });
-  }
-};
-
-const promoteToAdmin = async (req, res) => {
-  try {
-    const userId = Number(req.user.userId);
-    const chatId = Number(req.params.chatId);
-    const targetId = Number(req.body.userId);
-
-    await ensureMember(chatId, userId);
-    const user = await getRole(chatId, userId);
-    if (!user || user.role !== "OWNER")
-      return res.status(403).json({ error: "only owner can promote" });
-
-    const target = await prisma.chatParticipant.findUnique({
-      where: { chatId_userId: { chatId, userId: targetId } },
-      select: { role: true },
-    });
-    if (!target) return res.status(404).json({ error: "user not in chat" });
-    if (target.role === "OWNER")
-      return res.status(400).json({ error: "owner already" });
-
-    await prisma.chatParticipant.update({
-      where: { chatId_userId: { chatId, userId: targetId } },
-      data: { role: "ADMIN" },
-    });
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("promoteToAdmin failed:", err);
-    res.status(500).json({ error: "failed" });
-  }
-};
-
-const demoteFromAdmin = async (req, res) => {
-  try {
-    const userId = Number(req.user.userId);
-    const chatId = Number(req.params.chatId);
-    const targetId = Number(req.params.userId);
-
-    await ensureMember(chatId, userId);
-    const user = await getRole(chatId, userId);
-    if (!user || user.role !== "OWNER")
-      return res.status(403).json({ error: "only owner can demote" });
-
-    const target = await prisma.chatParticipant.findUnique({
-      where: { chatId_userId: { chatId, userId: targetId } },
-      select: { role: true },
-    });
-    if (!target) return res.status(404).json({ error: "user not in chat" });
-    if (target.role === "OWNER")
-      return res.status(400).json({ error: "cannot demote owner" });
-
-    await prisma.chatParticipant.update({
-      where: { chatId_userId: { chatId, userId: targetId } },
-      data: { role: "MEMBER" },
-    });
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("demoteFromAdmin failed:", err);
-    res.status(500).json({ error: "failed" });
   }
 };
 
@@ -276,8 +166,15 @@ const leaveGroup = async (req, res) => {
         .json({ error: "owner cannot leave; delete chat instead" });
     }
 
-    await prisma.chatParticipant.delete({
-      where: { chatId_userId: { chatId, userId } },
+    await prisma.$transaction(async (tx) => {
+      await tx.chatParticipant.delete({
+        where: { chatId_userId: { chatId, userId } },
+      });
+      await createSystemMessage(tx, {
+        chatId,
+        action: "member_left",
+        userId,
+      });
     });
 
     return res.json({ ok: true });
@@ -289,10 +186,6 @@ const leaveGroup = async (req, res) => {
 
 module.exports = {
   editGroup,
-  addParticipant,
-  removeParticipant,
-  promoteToAdmin,
-  demoteFromAdmin,
   deleteGroup,
   leaveGroup,
 };
