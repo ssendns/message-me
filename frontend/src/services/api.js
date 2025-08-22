@@ -138,6 +138,22 @@ export function editGroup({
   return request(`/chats/${chatId}`, { method: "PATCH", token, body: payload });
 }
 
+export function leaveGroup({ chatId, token }) {
+  return request(`/chats/${chatId}/leave`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function deleteGroup({ chatId, token }) {
+  return request(`/chats/${chatId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+// participants
+
 export function addParticipantToChat({ chatId, userId, token }) {
   return request(`/chats/${chatId}/participants`, {
     method: "POST",

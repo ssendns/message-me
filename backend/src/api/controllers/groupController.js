@@ -253,6 +253,40 @@ const demoteFromAdmin = async (req, res) => {
   }
 };
 
+const leaveGroup = async (req, res) => {
+  try {
+    const userId = Number(req.user.userId);
+    const chatId = Number(req.params.chatId);
+
+    await ensureMember(chatId, userId);
+
+    const participant = await prisma.chatParticipant.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+      select: { role: true, chat: { select: { type: true } } },
+    });
+    if (!participant) return res.status(404).json({ error: "not in chat" });
+
+    if (participant.chat.type !== "GROUP") {
+      return res.status(400).json({ error: "cannot leave a DIRECT chat" });
+    }
+
+    if (participant.role === "OWNER") {
+      return res
+        .status(403)
+        .json({ error: "owner cannot leave; delete chat instead" });
+    }
+
+    await prisma.chatParticipant.delete({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("leaveChat failed:", err);
+    return res.status(500).json({ error: "failed to leave chat" });
+  }
+};
+
 module.exports = {
   editGroup,
   addParticipant,
@@ -260,4 +294,5 @@ module.exports = {
   promoteToAdmin,
   demoteFromAdmin,
   deleteGroup,
+  leaveGroup,
 };

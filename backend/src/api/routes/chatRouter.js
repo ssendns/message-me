@@ -22,6 +22,8 @@ router.delete(
   groupController.demoteFromAdmin
 );
 
+router.post("/:chatId/leave", authMiddleware, groupController.leaveGroup);
+
 router.get("/:chatId", authMiddleware, chatController.getChat);
 router.patch("/:chatId", authMiddleware, groupController.editGroup);
 router.delete("/:chatId", authMiddleware, groupController.deleteGroup);
