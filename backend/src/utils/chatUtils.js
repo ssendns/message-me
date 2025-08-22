@@ -18,4 +18,20 @@ const ensureMember = async (chatId, userId) => {
   }
 };
 
-module.exports = { privateKey, ensureMember };
+const getRole = async (chatId, userId) => {
+  return prisma.chatParticipant.findUnique({
+    where: { chatId_userId: { chatId, userId } },
+    select: { role: true },
+  });
+};
+
+const isOwner = (role) => role === "OWNER";
+const isAdminOrOwner = (role) => role === "ADMIN" || role === "OWNER";
+
+module.exports = {
+  privateKey,
+  ensureMember,
+  getRole,
+  isOwner,
+  isAdminOrOwner,
+};

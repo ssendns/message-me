@@ -15,9 +15,16 @@ router.post(
   groupController.addParticipant
 );
 
+router.post("/:chatId/admins", authMiddleware, groupController.promoteToAdmin);
+router.delete(
+  "/:chatId/admins/:userId",
+  authMiddleware,
+  groupController.demoteFromAdmin
+);
+
 router.get("/:chatId", authMiddleware, chatController.getChat);
 router.patch("/:chatId", authMiddleware, groupController.editGroup);
-router.delete("/:chatId", authMiddleware, chatController.deleteChat);
+router.delete("/:chatId", authMiddleware, groupController.deleteGroup);
 router.get("/", authMiddleware, chatController.getAllChats);
 router.post("/", authMiddleware, chatController.createChat);
 
