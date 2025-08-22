@@ -1,15 +1,15 @@
 import { useState } from "react";
 import {
-  addParticipantToChat,
   removeParticipantFromChat,
   promoteToAdmin,
   demoteFromAdmin,
+  leaveGroup,
+  deleteGroup,
 } from "../services/api";
 import ParticipantItem from "./ParticipantItem";
+import { Eraser } from "lucide-react";
 
 const canEditGroup = (r) => r === "OWNER" || r === "ADMIN";
-const isOwner = (r) => r === "OWNER";
-const isAdmin = (r) => r === "ADMIN";
 
 export default function GroupInfoDrawer({
   open,
@@ -52,7 +52,7 @@ export default function GroupInfoDrawer({
           transform transition-transform duration-300
           ${open ? "translate-x-0" : "translate-x-full"}`}
     >
-      <div className="p-3 border-b flex items-start justify-between">
+      <div className="p-3 border-b flex items-center justify-between">
         <div className="flex flex-col">
           <h1 className="text-lg text-primary font-semibold">{chat.title}</h1>
           <span className="text-xs text-gray-500">
@@ -101,6 +101,40 @@ export default function GroupInfoDrawer({
             />
           );
         })}
+      </div>
+
+      <div className="mt-auto p-4 border-t">
+        {currentUserRole === "OWNER" ? (
+          <button
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem("token");
+                await deleteGroup({ chatId: chat.id, token });
+                window.location.href = "/";
+              } catch (err) {
+                alert(err.message || "failed to delete chat");
+              }
+            }}
+            className="w-full py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+          >
+            delete chat
+          </button>
+        ) : (
+          <button
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem("token");
+                await leaveGroup({ chatId: chat.id, token });
+                window.location.href = "/";
+              } catch (err) {
+                alert(err.message || "failed to leave chat");
+              }
+            }}
+            className="w-full py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+          >
+            leave chat
+          </button>
+        )}
       </div>
     </aside>
   );
