@@ -6,12 +6,13 @@ import useChatMessages from "../../hooks/useChatMessages";
 import useSendMessage from "../../hooks/useSendMessage";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Paperclip, Info } from "lucide-react";
-import GroupInfoDrawer from "./GroupInfoDrawer";
+import GroupInfoDrawer from "../GroupInfoDrawer";
 
 export default function ChatArea({
   displayName,
   chatId,
   currentUserId,
+  currentUserRole,
   participants,
   type,
   onBack,
@@ -215,6 +216,7 @@ export default function ChatArea({
             title: displayName,
             participants: participants,
           }}
+          currentUserRole={currentUserRole}
           membersCount={membersCount}
           currentUserId={currentUserId}
           onEdit={handleEditGroup}
