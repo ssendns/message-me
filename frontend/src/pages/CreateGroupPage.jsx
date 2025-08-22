@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { getAllUsers, createGroup, editGroup } from "../services/api";
 import AvatarPicker from "../components/AvatarPicker";
-import Avatar from "../components/Avatar";
+import UserSelectList from "../components/UserSelectList";
 
 export default function CreateGroupPage() {
   const token = localStorage.getItem("token");
@@ -12,7 +12,6 @@ export default function CreateGroupPage() {
 
   const [title, setTitle] = useState("");
   const [users, setUsers] = useState([]);
-  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [avatarDraft, setAvatarDraft] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,16 +36,6 @@ export default function CreateGroupPage() {
       cancel = true;
     };
   }, [token, currentUserId]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((user) =>
-      String(user.username || "")
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [users, query]);
 
   const toggle = (id) => {
     setSelected((prev) => {
@@ -143,53 +132,13 @@ export default function CreateGroupPage() {
               add participants
             </label>
 
-            <div className="mb-2">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="search users…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-
-            <div className="max-h-56 overflow-y-auto rounded-lg border">
-              {filtered.length === 0 ? (
-                <div className="p-3 text-sm text-muted text-center">
-                  no users
-                </div>
-              ) : (
-                filtered.map((u) => {
-                  const id = Number(u.id);
-                  const checked = selected.has(id);
-                  return (
-                    <label
-                      key={id}
-                      className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 ${
-                        checked ? "bg-gray-50" : ""
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggle(id)}
-                        className="accent-primary"
-                      />
-                      <Avatar
-                        avatarUrl={u.avatarUrl || null}
-                        username={u.username}
-                        size={28}
-                      />
-                      <span className="text-sm">{u.username}</span>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="mt-2 text-xs text-muted">
-              select at least 1 participant
-            </div>
+            <UserSelectList
+              users={users}
+              selected={selected}
+              onToggle={toggle}
+              excludeIds={[currentUserId]}
+              placeholder="search users…"
+            />
           </div>
 
           <div className="pt-2 flex items-center justify-center gap-3">

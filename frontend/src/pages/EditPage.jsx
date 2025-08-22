@@ -1,12 +1,21 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { getCurrentUser, editUser, getChat, editGroup } from "../services/api";
+import {
+  getCurrentUser,
+  editUser,
+  getChat,
+  editGroup,
+  getAllUsers,
+  addParticipantToChat,
+} from "../services/api";
 import AvatarPicker from "../components/AvatarPicker";
 import { ArrowLeft } from "lucide-react";
 import { buildUserPayload, buildGroupPayload } from "../utils/editUtils";
+import UserSelectList from "../components/UserSelectList";
 
 export default function EditPage() {
   const token = localStorage.getItem("token");
+  const currentUserId = Number(localStorage.getItem("id"));
   const navigate = useNavigate();
   const { chatId } = useParams();
   const isGroupMode = Boolean(chatId);
@@ -17,6 +26,10 @@ export default function EditPage() {
   // group mode only
   const [initialAvatar, setInitialAvatar] = useState(null);
   const [avatarDraft, setAvatarDraft] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [memberIds, setMemberIds] = useState(new Set());
+  const [selectedToAdd, setSelectedToAdd] = useState(new Set());
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,6 +42,7 @@ export default function EditPage() {
         if (!token) return;
 
         if (isGroupMode) {
+          setLoadingUsers(true);
           const res = await getChat({ token, chatId });
           const chat = res?.chat;
           if (!chat) throw new Error("chat not found");
@@ -45,6 +59,15 @@ export default function EditPage() {
             : null;
           setInitialAvatar(init);
           setAvatarDraft(init);
+
+          const ids = new Set(
+            (chat.participants || []).map((p) => Number(p.id))
+          );
+          setMemberIds(ids);
+          const list = await getAllUsers(token);
+          if (cancel) return;
+          const users = Array.isArray(list) ? list : list?.users || [];
+          setAllUsers(users);
         } else {
           const res = await getCurrentUser({ token });
           const user = res?.user;
@@ -71,6 +94,7 @@ export default function EditPage() {
         console.error(err);
       } finally {
         if (!cancel) setLoading(false);
+        if (!cancel) setLoadingUsers(false);
       }
     })();
     return () => {
@@ -78,14 +102,24 @@ export default function EditPage() {
     };
   }, [token, isGroupMode, chatId]);
 
+  const toggleSelect = (id) => {
+    setSelectedToAdd((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const hasChanges = useMemo(() => {
     const nameChanged = name.trim() !== initialNameRef.current;
     const passwordChanged = !isGroupMode && password.trim().length > 0;
     const avatarChanged =
       JSON.stringify(avatarDraft ?? null) !==
       JSON.stringify(initialAvatar ?? null);
-    return nameChanged || passwordChanged || avatarChanged;
-  }, [name, password, avatarDraft, initialAvatar, isGroupMode]);
+    const addingPeople = isGroupMode && selectedToAdd.size > 0;
+    return nameChanged || passwordChanged || avatarChanged || addingPeople;
+  }, [name, password, avatarDraft, initialAvatar, isGroupMode, selectedToAdd]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,19 +137,28 @@ export default function EditPage() {
           avatarDraft,
           initialAvatar,
         });
-        if (!Object.keys(body).length) return alert("nothing to update");
-        const res = await editGroup({ token, chatId, ...body });
-        const updated = res?.chat;
-        if (updated?.title != null) initialNameRef.current = updated.title;
+        if (Object.keys(body).length) {
+          const res = await editGroup({ token, chatId, ...body });
+          const updated = res?.chat;
+          if (updated?.title != null) initialNameRef.current = updated.title;
+          setInitialAvatar(
+            updated?.avatarUrl
+              ? {
+                  url: updated.avatarUrl,
+                  publicId: updated.avatarPublicId ?? null,
+                }
+              : null
+          );
+        }
 
-        setInitialAvatar(
-          updated?.avatarUrl
-            ? {
-                url: updated.avatarUrl,
-                publicId: updated.avatarPublicId ?? null,
-              }
-            : null
-        );
+        if (selectedToAdd.size > 0) {
+          const idsToAdd = Array.from(selectedToAdd);
+          await Promise.allSettled(
+            idsToAdd.map((uid) =>
+              addParticipantToChat({ chatId, userId: uid, token })
+            )
+          );
+        }
 
         alert("group updated");
         navigate("/");
@@ -209,6 +252,32 @@ export default function EditPage() {
               placeholder={isGroupMode ? "enter group title" : "enter username"}
             />
           </div>
+
+          {isGroupMode && (
+            <div className="space-y-2">
+              <label className="block text-sm text-muted">
+                add participants
+              </label>
+
+              {loadingUsers ? (
+                <div className="p-3 text-sm text-muted text-center rounded-lg border">
+                  loading users…
+                </div>
+              ) : (
+                <UserSelectList
+                  users={allUsers}
+                  selected={selectedToAdd}
+                  onToggle={toggleSelect}
+                  excludeIds={[...memberIds, currentUserId]}
+                  placeholder="search users…"
+                />
+              )}
+
+              <div className="text-xs text-muted">
+                selected: {selectedToAdd.size || 0}
+              </div>
+            </div>
+          )}
 
           {!isGroupMode && (
             <div>
