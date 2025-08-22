@@ -39,13 +39,12 @@ enum ChatType {
 
 model ChatParticipant {
   id              Int               @id @default(autoincrement())
+  chat            Chat              @relation(fields: [chatId], references: [id], onDelete: Cascade)
   chatId          Int
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          Int
   role            ParticipantRole   @default(MEMBER)
   lastReadAt      DateTime?
-
-  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([chatId, userId])
 }
@@ -58,19 +57,27 @@ enum ParticipantRole {
 
 model Message {
   id              Int                @id @default(autoincrement())
+  chat            Chat               @relation(fields: [chatId], references: [id], onDelete: Cascade)
   chatId          Int
-  fromId          Int
+  from            User?              @relation("FromUser", fields: [fromId], references: [id])
+  fromId          Int?
+
+  type            MessageType        @default(TEXT)
+  meta            Json?
   text            String             @default("")
   imageUrl        String?
   imagePublicId   String?
+
   edited          Boolean            @default(false)
   read            Boolean            @default(false)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  from User @relation("FromUser", fields: [fromId], references: [id])
-
   @@index([chatId, createdAt])
   @@index([fromId, createdAt])
+}
+
+enum MessageType {
+  TEXT
+  SYSTEM
 }
