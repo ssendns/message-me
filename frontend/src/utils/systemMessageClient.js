@@ -1,8 +1,8 @@
-function nameById(id, participants, currentUserId) {
+function nameById(id, participants, currentUserId, fallback) {
   if (id == null) return "system";
   if (String(id) === String(currentUserId)) return "you";
   const user = (participants || []).find((p) => String(p.id) === String(id));
-  return user?.username ?? `user#${id}`;
+  return user?.username ?? fallback ?? `user#${id}`;
 }
 
 export function systemPreview(message, participants, currentUserId) {
@@ -12,15 +12,21 @@ export function systemPreview(message, participants, currentUserId) {
 
 export function systemText(message, participants, currentUserId) {
   if (!message || message.type !== "SYSTEM") return message?.text ?? "";
-  const action = message.meta?.action;
+  const meta = message.meta || {};
   const user = nameById(
-    message.meta?.userId ?? message.fromId,
+    meta?.userId ?? message.fromId,
     participants,
-    currentUserId
+    currentUserId,
+    meta?.userName
   );
-  const target = nameById(message.meta?.targetId, participants, currentUserId);
+  const target = nameById(
+    meta?.targetId,
+    participants,
+    currentUserId,
+    meta?.targetName
+  );
 
-  switch (action) {
+  switch (meta.action) {
     case "member_added":
       return `${user} added ${target}`;
     case "member_removed":
@@ -32,8 +38,8 @@ export function systemText(message, participants, currentUserId) {
     case "demoted_from_admin":
       return `${user} removed admin from ${target}`;
     case "title_changed":
-      if (message.meta?.title) {
-        return `${user} renamed the group: “${message.meta.title}”`;
+      if (meta?.title) {
+        return `${user} renamed the group: “${meta.title}”`;
       }
       return `${user} renamed the group`;
     case "avatar_changed":

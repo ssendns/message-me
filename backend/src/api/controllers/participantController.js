@@ -32,11 +32,24 @@ const addParticipant = async (req, res) => {
         create: { chatId, userId: targetId, role: "MEMBER" },
         update: {},
       });
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+      const target = await tx.user.findUnique({
+        where: { id: targetId },
+        select: { username: true },
+      });
+
       const systemMessage = await createSystemMessage(prisma, {
         chatId,
         action: "member_added",
         userId,
         targetId,
+        extra: {
+          userName: user?.username,
+          targetName: target?.username,
+        },
       });
       emitToChat(chatId, "receive_message", systemMessage);
     });
@@ -87,11 +100,23 @@ const removeParticipant = async (req, res) => {
       await tx.chatParticipant.delete({
         where: { chatId_userId: { chatId, userId: targetId } },
       });
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+      const target = await tx.user.findUnique({
+        where: { id: targetId },
+        select: { username: true },
+      });
       const systemMessage = await createSystemMessage(prisma, {
         chatId,
         action: "member_removed",
         userId,
         targetId,
+        extra: {
+          userName: user?.username,
+          targetName: target?.username,
+        },
       });
       emitToChat(chatId, "receive_message", systemMessage);
     });
@@ -127,11 +152,23 @@ const promoteToAdmin = async (req, res) => {
         where: { chatId_userId: { chatId, userId: targetId } },
         data: { role: "ADMIN" },
       });
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+      const target = await tx.user.findUnique({
+        where: { id: targetId },
+        select: { username: true },
+      });
       const systemMessage = await createSystemMessage(prisma, {
         chatId,
         action: "promoted_to_admin",
         userId,
         targetId,
+        extra: {
+          userName: user?.username,
+          targetName: target?.username,
+        },
       });
       emitToChat(chatId, "receive_message", systemMessage);
     });
@@ -167,11 +204,23 @@ const demoteFromAdmin = async (req, res) => {
         where: { chatId_userId: { chatId, userId: targetId } },
         data: { role: "MEMBER" },
       });
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+      const target = await tx.user.findUnique({
+        where: { id: targetId },
+        select: { username: true },
+      });
       const systemMessage = await createSystemMessage(prisma, {
         chatId,
         action: "demoted_from_admin",
         userId,
         targetId,
+        extra: {
+          userName: user?.username,
+          targetName: target?.username,
+        },
       });
       emitToChat(chatId, "receive_message", systemMessage);
     });
