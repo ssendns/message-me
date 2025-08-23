@@ -3,6 +3,7 @@ import { getAllChats, getAllUsers } from "../services/api";
 import useSocket from "../hooks/useSocket";
 import { sortByTimeDesc, mapApiChat } from "../utils/chatUtils";
 import SOCKET_EVENTS from "../services/socketEvents";
+import { systemPreview } from "../utils/systemMessageClient";
 
 export default function useChatList(
   token,
@@ -112,29 +113,40 @@ export default function useChatList(
       imageUrl,
       createdAt,
       id,
+      type,
+      meta,
     }) => {
       const isOwn = fromId === currentUserId;
       const isOpen = String(chatId) === String(currentChat?.id);
 
       setChats((prev) =>
         sortByTimeDesc(
-          prev.map((chat) =>
-            String(chat.id) === String(chatId)
-              ? {
-                  ...chat,
-                  lastMessageText: text ?? "",
-                  lastMessageImageUrl: imageUrl ?? null,
-                  lastMessageId: id,
-                  time: createdAt || new Date().toISOString(),
-                  unreadCount: isOwn
-                    ? chat.unreadCount || 0
-                    : isOpen
-                    ? 0
-                    : (chat.unreadCount || 0) + 1,
-                  hasUnread: isOwn ? chat.hasUnread : !isOpen,
-                }
-              : chat
-          )
+          prev.map((chat) => {
+            if (String(chat.id) !== String(chatId)) return chat;
+
+            const previewText =
+              type === "SYSTEM"
+                ? systemPreview(
+                    { type, meta, fromId },
+                    chat.participants,
+                    currentUserId
+                  )
+                : text ?? "";
+
+            return {
+              ...chat,
+              lastMessageText: previewText,
+              lastMessageImageUrl: type === "SYSTEM" ? null : imageUrl ?? null,
+              lastMessageId: id,
+              time: createdAt || new Date().toISOString(),
+              unreadCount: isOwn
+                ? chat.unreadCount || 0
+                : isOpen
+                ? 0
+                : (chat.unreadCount || 0) + 1,
+              hasUnread: isOwn ? chat.hasUnread : !isOpen,
+            };
+          })
         )
       );
     };
@@ -193,8 +205,16 @@ export default function useChatList(
             chat.lastMessageId === id
               ? {
                   ...chat,
-                  lastMessageText: text ?? "",
-                  lastMessageImageUrl: imageUrl ?? null,
+                  lastMessageText:
+                    type === "SYSTEM"
+                      ? systemPreview(
+                          { type, meta, fromId },
+                          chat.participants,
+                          currentUserId
+                        )
+                      : text ?? "",
+                  lastMessageImageUrl:
+                    type === "SYSTEM" ? null : imageUrl ?? null,
                   time: createdAt || new Date().toISOString(),
                   hasUnread: isOwn ? chat.hasUnread : !isOpen,
                 }

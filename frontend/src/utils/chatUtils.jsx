@@ -1,3 +1,5 @@
+import { systemPreview } from "./systemMessageClient";
+
 export function formatDate(dateStr) {
   const date = new Date(dateStr);
   const today = new Date();
@@ -52,6 +54,13 @@ export function mapApiChat(chat, currentUserId) {
   const currentUserRole =
     chat.participants.find((p) => p.id === currentUserId)?.role ?? "MEMBER";
 
+  const isSystem = last?.type === "SYSTEM";
+  const lastMessageText = isSystem
+    ? systemPreview(last, chat.participants, currentUserId)
+    : last?.text ?? "";
+
+  const lastMessageImageUrl = isSystem ? null : last?.imageUrl ?? null;
+
   return {
     id: chat.id,
     type: chat.type,
@@ -61,8 +70,8 @@ export function mapApiChat(chat, currentUserId) {
     participants: chat.participants,
     displayName,
     avatarUrl: chat.avatarUrl ?? null,
-    lastMessageText: last?.text ?? "",
-    lastMessageImageUrl: last?.imageUrl ?? "",
+    lastMessageText,
+    lastMessageImageUrl,
     lastMessageId: last?.id ?? null,
     time: last?.createdAt ?? null,
     unreadCount: chat.unreadCount ?? 0,
