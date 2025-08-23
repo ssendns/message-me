@@ -19,6 +19,30 @@ export default function useChatList(
   const searchRef = useRef("");
   searchRef.current = (searchTerm || "").trim().toLowerCase();
 
+  const getPreview = useCallback(
+    (last, chat) => {
+      if (!last) {
+        return {
+          text: "",
+          imageUrl: null,
+          id: null,
+          time: null,
+        };
+      }
+      const text =
+        last.type === "SYSTEM"
+          ? systemPreview(last, chat.participants, currentUserId)
+          : last.text ?? "";
+      return {
+        text,
+        imageUrl: last.imageUrl ?? null,
+        id: last.id ?? null,
+        time: last.createdAt ?? null,
+      };
+    },
+    [currentUserId]
+  );
+
   const fetchChats = useCallback(async () => {
     if (!token) return;
     try {
@@ -106,47 +130,35 @@ export default function useChatList(
   useEffect(() => {
     if (!socket) return;
 
-    const handleReceive = ({
-      chatId,
-      fromId,
-      text,
-      imageUrl,
-      createdAt,
-      id,
-      type,
-      meta,
-    }) => {
+    const handleReceive = (payload) => {
+      const { chatId, fromId, type } = payload;
       const isOwn = fromId === currentUserId;
       const isOpen = String(chatId) === String(currentChat?.id);
 
       setChats((prev) =>
         sortByTimeDesc(
-          prev.map((chat) => {
-            if (String(chat.id) !== String(chatId)) return chat;
-
-            const previewText =
-              type === "SYSTEM"
-                ? systemPreview(
-                    { type, meta, fromId },
-                    chat.participants,
-                    currentUserId
-                  )
-                : text ?? "";
-
-            return {
-              ...chat,
-              lastMessageText: previewText,
-              lastMessageImageUrl: type === "SYSTEM" ? null : imageUrl ?? null,
-              lastMessageId: id,
-              time: createdAt || new Date().toISOString(),
-              unreadCount: isOwn
-                ? chat.unreadCount || 0
-                : isOpen
-                ? 0
-                : (chat.unreadCount || 0) + 1,
-              hasUnread: isOwn ? chat.hasUnread : !isOpen,
-            };
-          })
+          prev.map((chat) =>
+            String(chat.id) === String(chatId)
+              ? {
+                  ...chat,
+                  ...(() => {
+                    const p = getPreview(payload, chat);
+                    return {
+                      lastMessageText: p.text,
+                      lastMessageImageUrl: p.imageUrl,
+                      lastMessageId: p.id,
+                      time: p.time || new Date().toISOString(),
+                    };
+                  })(),
+                  unreadCount: isOwn
+                    ? chat.unreadCount || 0
+                    : isOpen
+                    ? 0
+                    : (chat.unreadCount || 0) + 1,
+                  hasUnread: isOwn ? chat.hasUnread : !isOpen,
+                }
+              : chat
+          )
         )
       );
     };
@@ -167,10 +179,15 @@ export default function useChatList(
               ? nextLast
                 ? {
                     ...chat,
-                    lastMessageText: nextLast.text ?? "",
-                    lastMessageImageUrl: nextLast.imageUrl ?? null,
-                    lastMessageId: nextLast.id ?? null,
-                    time: nextLast.createdAt ?? null,
+                    ...(() => {
+                      const p = getPreview(nextLast, chat);
+                      return {
+                        lastMessageText: p.text,
+                        lastMessageImageUrl: p.imageUrl,
+                        lastMessageId: p.id,
+                        time: p.time,
+                      };
+                    })(),
                   }
                 : {
                     ...chat,
@@ -188,14 +205,8 @@ export default function useChatList(
       );
     };
 
-    const handleEdited = ({
-      chatId,
-      id,
-      text,
-      imageUrl,
-      createdAt,
-      fromId,
-    }) => {
+    const handleEdited = (payload) => {
+      const { chatId, id, fromId } = payload;
       const isOwn = fromId === currentUserId;
       const isOpen = String(chatId) === String(currentChat?.id);
 
@@ -205,17 +216,14 @@ export default function useChatList(
             chat.lastMessageId === id
               ? {
                   ...chat,
-                  lastMessageText:
-                    type === "SYSTEM"
-                      ? systemPreview(
-                          { type, meta, fromId },
-                          chat.participants,
-                          currentUserId
-                        )
-                      : text ?? "",
-                  lastMessageImageUrl:
-                    type === "SYSTEM" ? null : imageUrl ?? null,
-                  time: createdAt || new Date().toISOString(),
+                  ...(() => {
+                    const p = getPreview(payload, chat);
+                    return {
+                      lastMessageText: p.text,
+                      lastMessageImageUrl: p.imageUrl,
+                      time: p.time || new Date().toISOString(),
+                    };
+                  })(),
                   hasUnread: isOwn ? chat.hasUnread : !isOpen,
                 }
               : chat

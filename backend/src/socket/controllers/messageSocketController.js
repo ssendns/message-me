@@ -124,6 +124,7 @@ const deleteMessage = async (id, chatId, fromId) => {
         imageUrl: true,
         createdAt: true,
         type: true,
+        meta: true,
       },
     }),
   ]);
@@ -149,6 +150,7 @@ const deleteMessage = async (id, chatId, fromId) => {
           imageUrl: nextLast.imageUrl ?? null,
           createdAt: nextLast.createdAt,
           type: nextLast.type,
+          meta: nextLast.meta,
         }
       : null,
   };
