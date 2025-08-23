@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { getAllChats, getAllUsers } from "../services/api";
 import useSocket from "../hooks/useSocket";
 import { sortByTimeDesc, mapApiChat } from "../utils/chatUtils";
+import SOCKET_EVENTS from "../services/socketEvents";
 
 export default function useChatList(
   token,
@@ -34,7 +35,7 @@ export default function useChatList(
 
   useEffect(() => {
     if (!socket) return;
-    socket.emit("get_online_users");
+    socket.emit(SOCKET_EVENTS.GET_ONLINE_USERS);
 
     const handleOnlineUsers = (ids) => setOnlineUserIds(ids.map(String));
     const handleUserOnline = (userId) =>
@@ -42,14 +43,14 @@ export default function useChatList(
     const handleUserOffline = (userId) =>
       setOnlineUserIds((prev) => prev.filter((id) => id !== String(userId)));
 
-    socket.on("online_users", handleOnlineUsers);
-    socket.on("user_online", handleUserOnline);
-    socket.on("user_offline", handleUserOffline);
+    socket.on(SOCKET_EVENTS.ONLINE_USERS, handleOnlineUsers);
+    socket.on(SOCKET_EVENTS.USER_ONLINE, handleUserOnline);
+    socket.on(SOCKET_EVENTS.USER_OFFLINE, handleUserOffline);
 
     return () => {
-      socket.off("online_users", handleOnlineUsers);
-      socket.off("user_online", handleUserOnline);
-      socket.off("user_offline", handleUserOffline);
+      socket.off(SOCKET_EVENTS.ONLINE_USERS, handleOnlineUsers);
+      socket.off(SOCKET_EVENTS.USER_ONLINE, handleUserOnline);
+      socket.off(SOCKET_EVENTS.USER_OFFLINE, handleUserOffline);
     };
   }, [socket]);
 
@@ -215,16 +216,16 @@ export default function useChatList(
       }
     };
 
-    socket.on("receive_message", handleReceive);
-    socket.on("message_deleted", handleDeleted);
-    socket.on("receive_edited_message", handleEdited);
-    socket.on("messages_read", handleMessagesRead);
+    socket.on(SOCKET_EVENTS.RECEIVE_MESSAGE, handleReceive);
+    socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleDeleted);
+    socket.on(SOCKET_EVENTS.RECEIVE_EDITED_MESSAGE, handleEdited);
+    socket.on(SOCKET_EVENTS.MESSAGES_READ, handleMessagesRead);
 
     return () => {
-      socket.off("receive_message", handleReceive);
-      socket.off("message_deleted", handleDeleted);
-      socket.off("receive_edited_message", handleEdited);
-      socket.off("messages_read", handleMessagesRead);
+      socket.off(SOCKET_EVENTS.RECEIVE_MESSAGE, handleReceive);
+      socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleDeleted);
+      socket.off(SOCKET_EVENTS.RECEIVE_EDITED_MESSAGE, handleEdited);
+      socket.off(SOCKET_EVENTS.MESSAGES_READ, handleMessagesRead);
     };
   }, [socket, currentUserId, currentChat?.id]);
 

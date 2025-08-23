@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import useSocket from "../../hooks/useSocket";
 import useChatList from "../../hooks/useChatList";
 import ChatListItem from "./ChatListItem";
+import SOCKET_EVENTS from "../../services/socketEvents";
 
 export default function ChatList({
   token,
@@ -58,25 +59,28 @@ export default function ChatList({
       pendingTimerRef.current = setTimeout(() => {
         setPendingPeerId((curr) => (curr === peerId ? null : curr));
       }, 8000);
-      socket.once("chat_ready", ({ chatId, peerId: returnedPeerId }) => {
-        if (returnedPeerId !== peerId) return;
-        if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
-        setPendingPeerId(null);
+      socket.once(
+        SOCKET_EVENTS.CHAT_READY,
+        ({ chatId, peerId: returnedPeerId }) => {
+          if (returnedPeerId !== peerId) return;
+          if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+          setPendingPeerId(null);
 
-        onSelect({
-          id: chatId,
-          type: "DIRECT",
-          displayName: item.displayName,
-          participants: item.participants,
-          lastMessageText: "",
-          lastMessageImageUrl: null,
-          time: null,
-          unreadCount: 0,
-          hasUnread: false,
-        });
-      });
+          onSelect({
+            id: chatId,
+            type: "DIRECT",
+            displayName: item.displayName,
+            participants: item.participants,
+            lastMessageText: "",
+            lastMessageImageUrl: null,
+            time: null,
+            unreadCount: 0,
+            hasUnread: false,
+          });
+        }
+      );
 
-      socket.emit("get_or_create_chat", { peerId });
+      socket.emit(SOCKET_EVENTS.GET_OR_CREATE_CHAT, { peerId });
     },
     [socket, onSelect, markChatRead, pendingPeerId]
   );

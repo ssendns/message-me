@@ -170,7 +170,7 @@ export function removeParticipantFromChat({ chatId, userId, token }) {
 }
 
 export function promoteToAdmin({ chatId, userId, token }) {
-  return request(`/chats/${chatId}/admins`, {
+  return request(`/chats/${chatId}/participants/admins`, {
     method: "POST",
     token,
     body: { userId },
@@ -178,7 +178,7 @@ export function promoteToAdmin({ chatId, userId, token }) {
 }
 
 export function demoteFromAdmin({ chatId, userId, token }) {
-  return request(`/chats/${chatId}/admins/${userId}`, {
+  return request(`/chats/${chatId}/participants/admins/${userId}`, {
     method: "DELETE",
     token,
   });

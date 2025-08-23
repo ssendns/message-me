@@ -5,6 +5,7 @@ import ChatArea from "../components/chat/ChatArea";
 import Sidebar from "../components/Sidebar";
 import WelcomeModal from "../components/WelcomeModal";
 import useSocket from "../hooks/useSocket";
+import SOCKET_EVENTS from "../services/socketEvents";
 
 export default function MainPage() {
   const [selectedChat, setSelectedChat] = useState(null);
@@ -75,8 +76,7 @@ export default function MainPage() {
 
   useEffect(() => {
     if (socket && isReady && currentUserId) {
-      socket.emit("join", { userId: currentUserId });
-      socket.emit("join", { userId: currentUserId });
+      socket.emit(SOCKET_EVENTS.JOIN, { userId: currentUserId });
       return () => {};
     }
   }, [socket, isReady, currentUserId]);

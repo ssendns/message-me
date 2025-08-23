@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { getChatMessages } from "../services/api";
 import useSocket from "./useSocket";
+import SOCKET_EVENTS from "../services/socketEvents";
 const PAGE = 30;
 
 export default function useChatMessages({ chatId, currentUserId }) {
@@ -76,7 +77,7 @@ export default function useChatMessages({ chatId, currentUserId }) {
   useEffect(() => {
     if (!chatId || !currentUserId || !socket) return;
 
-    socket.emit("join_chat", { chatId: Number(chatId) });
+    socket.emit(SOCKET_EVENTS.JOIN_CHAT, { chatId: Number(chatId) });
 
     const handleReceiveMessage = (message) => {
       if (String(message.chatId) !== String(chatId)) return;
@@ -95,11 +96,11 @@ export default function useChatMessages({ chatId, currentUserId }) {
       });
     };
 
-    socket.on("receive_message", handleReceiveMessage);
+    socket.on(SOCKET_EVENTS.RECEIVE_MESSAGE, handleReceiveMessage);
 
     return () => {
-      socket.off("receive_message", handleReceiveMessage);
-      socket.emit("leave_chat", { chatId: Number(chatId) });
+      socket.off(SOCKET_EVENTS.RECEIVE_MESSAGE, handleReceiveMessage);
+      socket.emit(SOCKET_EVENTS.LEAVE_CHAT, { chatId: Number(chatId) });
     };
   }, [socket, currentUserId, chatId]);
 
@@ -123,7 +124,7 @@ export default function useChatMessages({ chatId, currentUserId }) {
       );
     };
 
-    socket.on("messages_read", handleMessagesRead);
+    socket.on(SOCKET_EVENTS.MESSAGES_READ, handleMessagesRead);
     return () => socket.off("messages_read", handleMessagesRead);
   }, [socket, chatId, currentUserId]);
 
@@ -159,11 +160,11 @@ export default function useChatMessages({ chatId, currentUserId }) {
       setMessages((prev) => prev.filter((message) => message.id !== id));
     };
 
-    socket.on("receive_edited_message", handleEditedMessage);
-    socket.on("message_deleted", handleDeletedMessage);
+    socket.on(SOCKET_EVENTS.RECEIVE_EDITED_MESSAGE, handleEditedMessage);
+    socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleDeletedMessage);
     return () => {
-      socket.off("receive_edited_message", handleEditedMessage);
-      socket.off("message_deleted", handleDeletedMessage);
+      socket.off(SOCKET_EVENTS.RECEIVE_EDITED_MESSAGE, handleEditedMessage);
+      socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleDeletedMessage);
     };
   }, [socket, chatId]);
 

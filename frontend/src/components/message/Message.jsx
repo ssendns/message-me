@@ -6,6 +6,7 @@ import MessageContent from "./MessageContent";
 import useMenu from "../../hooks/useMenu";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
+import SOCKET_EVENTS from "../../services/socketEvents";
 
 export default function Message({ message, currentUserId, authorName = null }) {
   const isOwn = message.fromId === currentUserId;
@@ -34,7 +35,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
 
   const handleDelete = useCallback(() => {
     if (!isReady) return;
-    socket.emit("delete_message", {
+    socket.emit(SOCKET_EVENTS.DELETE_MESSAGE, {
       id: message.id,
       chatId: message.chatId,
       fromId: message.fromId,
@@ -70,7 +71,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
   }, []);
 
   const handleEditSubmit = useCallback(() => {
-    socket.emit("edit_message", {
+    socket.emit(SOCKET_EVENTS.EDIT_MESSAGE, {
       id: message.id,
       chatId: message.chatId,
       fromId: message.fromId,
