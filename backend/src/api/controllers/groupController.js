@@ -118,7 +118,7 @@ const editGroup = async (req, res) => {
           chatId,
           action: "title_changed",
           userId,
-          extra: { fromTitle: chat.title, toTitle: dataToUpdate.title },
+          extra: { title: dataToUpdate.title },
         });
         emitToChat(chatId, "receive_message", systemMessage);
       }

@@ -24,6 +24,7 @@ const createMessage = async (chatId, fromId, text, imageUrl, imagePublicId) => {
       imageUrl: hasImage ? imageUrl : null,
       imagePublicId: imagePublicId || null,
       read: false,
+      type: "TEXT",
     },
     select: {
       id: true,
@@ -35,6 +36,8 @@ const createMessage = async (chatId, fromId, text, imageUrl, imagePublicId) => {
       createdAt: true,
       edited: true,
       read: true,
+      type: true,
+      meta: true,
     },
   });
 
@@ -85,6 +88,8 @@ const editMessage = async (
       imagePublicId: true,
       updatedAt: true,
       edited: true,
+      type: true,
+      meta: true,
     },
   });
 
@@ -113,7 +118,13 @@ const deleteMessage = async (id, chatId, fromId) => {
     prisma.message.findFirst({
       where: { chatId },
       orderBy: { createdAt: "desc" },
-      select: { id: true, text: true, imageUrl: true, createdAt: true },
+      select: {
+        id: true,
+        text: true,
+        imageUrl: true,
+        createdAt: true,
+        type: true,
+      },
     }),
   ]);
 
@@ -137,6 +148,7 @@ const deleteMessage = async (id, chatId, fromId) => {
           text: nextLast.text ?? "",
           imageUrl: nextLast.imageUrl ?? null,
           createdAt: nextLast.createdAt,
+          type: nextLast.type,
         }
       : null,
   };

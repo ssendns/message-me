@@ -12,6 +12,8 @@ const MESSAGE_SELECT = {
   edited: true,
   createdAt: true,
   updatedAt: true,
+  type: true,
+  meta: true,
 };
 
 const getChatMessages = async (req, res) => {
@@ -82,6 +84,7 @@ const createMessage = async (req, res) => {
         imageUrl: imageUrl || null,
         imagePublicId: imagePublicId || null,
         read: false,
+        type: "TEXT",
       },
       select: MESSAGE_SELECT,
     });
@@ -162,7 +165,14 @@ const deleteMessage = async (req, res) => {
     const nextLast = await prisma.message.findFirst({
       where: { chatId },
       orderBy: { createdAt: "desc" },
-      select: { id: true, text: true, imageUrl: true, createdAt: true },
+      select: {
+        id: true,
+        text: true,
+        imageUrl: true,
+        createdAt: true,
+        type: true,
+        meta: true,
+      },
     });
 
     res.status(200).json({
@@ -174,6 +184,8 @@ const deleteMessage = async (req, res) => {
             text: nextLast.text ?? "",
             imageUrl: nextLast.imageUrl ?? null,
             createdAt: nextLast.createdAt,
+            type: nextLast.type,
+            meta: nextLast.meta,
           }
         : null,
     });
