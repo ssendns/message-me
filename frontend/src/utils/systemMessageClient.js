@@ -46,6 +46,8 @@ export function systemText(message, participants, currentUserId) {
       return `${user} changed the group avatar`;
     case "chat_deleted":
       return `${user} deleted the group`;
+    case "group_created":
+      return `${user} created the group “${meta?.title || "untitled"}”`;
     default:
       return "system update";
   }

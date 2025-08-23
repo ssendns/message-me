@@ -1,5 +1,7 @@
 const prisma = require("../../utils/prisma");
 const { ensureMember, privateKey } = require("../../utils/chatUtils");
+const { createSystemMessage } = require("../../utils/systemMessage");
+const { emitToChat } = require("../../socket/hub");
 
 const getAllChats = async (req, res) => {
   const userId = Number(req.user.userId);
@@ -203,15 +205,34 @@ const createChat = async (req, res) => {
         role: id === userId ? "OWNER" : "MEMBER",
       }));
 
-      const chat = await prisma.chat.create({
-        data: {
-          type: "GROUP",
-          title: title.trim(),
-          participants: { create: participantsCreate },
-        },
-        select: { id: true },
+      const group = await prisma.$transaction(async (tx) => {
+        const chat = await tx.chat.create({
+          data: {
+            type: "GROUP",
+            title: title.trim(),
+            participants: { create: participantsCreate },
+          },
+          select: { id: true },
+        });
+
+        const owner = await tx.user.findUnique({
+          where: { id: userId },
+          select: { username: true },
+        });
+
+        const systemMessage = await createSystemMessage(tx, {
+          chatId: chat.id,
+          action: "group_created",
+          userId,
+          extra: { userName: owner?.username, title: title.trim() },
+        });
+
+        emitToChat(chat.id, "receive_message", systemMessage);
+
+        return chat;
       });
-      return res.status(201).json({ id: chat.id });
+
+      return res.status(201).json({ id: group.id });
     }
 
     return res.status(400).json({ message: "invalid chat type" });
