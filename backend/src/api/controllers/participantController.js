@@ -5,6 +5,7 @@ const {
   isAdminOrOwner,
 } = require("../../utils/chatUtils");
 const { createSystemMessage } = require("../../utils/systemMessage");
+const { emitToChat } = require("../../socket/hub");
 
 const addParticipant = async (req, res) => {
   const userId = Number(req.user.userId);
@@ -31,12 +32,13 @@ const addParticipant = async (req, res) => {
         create: { chatId, userId: targetId, role: "MEMBER" },
         update: {},
       });
-      await createSystemMessage(tx, {
+      const systemMessage = await createSystemMessage(prisma, {
         chatId,
         action: "member_added",
         userId,
         targetId,
       });
+      emitToChat(chatId, "receive_message", systemMessage);
     });
 
     res.json({ ok: true });
@@ -85,12 +87,13 @@ const removeParticipant = async (req, res) => {
       await tx.chatParticipant.delete({
         where: { chatId_userId: { chatId, userId: targetId } },
       });
-      await createSystemMessage(tx, {
+      const systemMessage = await createSystemMessage(prisma, {
         chatId,
         action: "member_removed",
         userId,
         targetId,
       });
+      emitToChat(chatId, "receive_message", systemMessage);
     });
     res.json({ ok: true });
   } catch (err) {
@@ -124,13 +127,13 @@ const promoteToAdmin = async (req, res) => {
         where: { chatId_userId: { chatId, userId: targetId } },
         data: { role: "ADMIN" },
       });
-      await createSystemMessage(tx, {
+      const systemMessage = await createSystemMessage(prisma, {
         chatId,
-        action: "role_promoted",
+        action: "promoted_to_admin",
         userId,
         targetId,
-        extra: { role: "ADMIN" },
       });
+      emitToChat(chatId, "receive_message", systemMessage);
     });
 
     res.json({ ok: true });
@@ -164,13 +167,13 @@ const demoteFromAdmin = async (req, res) => {
         where: { chatId_userId: { chatId, userId: targetId } },
         data: { role: "MEMBER" },
       });
-      await createSystemMessage(tx, {
+      const systemMessage = await createSystemMessage(prisma, {
         chatId,
-        action: "role_demoted",
+        action: "demoted_from_admin",
         userId,
         targetId,
-        extra: { role: "MEMBER" },
       });
+      emitToChat(chatId, "receive_message", systemMessage);
     });
 
     res.json({ ok: true });

@@ -4,9 +4,15 @@ const chatController = require("./controllers/chatSocketController");
 const validator = require("../validators/socketValidator");
 const { ensureMember } = require("../utils/chatUtils");
 const emitError = require("../utils/socketError");
-
-const roomUser = (id) => `user_${id}`;
-const roomChat = (id) => `chat_${id}`;
+const {
+  setIO,
+  getIO,
+  roomUser,
+  roomChat,
+  emitToChat,
+  emitToUsers,
+  emitToChatAndUsers,
+} = require("./hub");
 
 function setupSocket(server) {
   const io = new Server(server, {
@@ -17,6 +23,8 @@ function setupSocket(server) {
     },
   });
 
+  setIO(io);
+
   const onlineUsers = new Set();
 
   io.on("connection", (socket) => {
@@ -26,7 +34,8 @@ function setupSocket(server) {
       socket.data.userId = Number(userId);
       socket.join(roomUser(userId));
       onlineUsers.add(String(userId));
-      io.emit("user_online", userId);
+
+      getIO().emit("user_online", userId);
       console.log(`user ${userId} is online`);
     });
 
@@ -34,7 +43,7 @@ function setupSocket(server) {
       const id = socket.data.userId;
       if (id != null) {
         onlineUsers.delete(String(id));
-        io.emit("user_offline", id);
+        getIO().emit("user_offline", id);
       }
     });
 
@@ -55,7 +64,6 @@ function setupSocket(server) {
         );
 
         socket.join(roomChat(chatId));
-
         socket.emit("chat_ready", { chatId, peerId });
       } catch (err) {
         emitError(socket, err, "failed to get or create chat");
@@ -98,13 +106,11 @@ function setupSocket(server) {
           imagePublicId
         );
 
-        io.to(roomChat(chatId)).emit("receive_message", payload);
-        const others = await chatController.getOtherUserIds(
+        await emitToChatAndUsers(
           chatId,
-          currentUserId
-        );
-        [...others, currentUserId].forEach((uid) =>
-          io.to(roomUser(uid)).emit("receive_message", payload)
+          currentUserId,
+          "receive_message",
+          payload
         );
       } catch (err) {
         emitError(socket, err, "send_message failed");
@@ -135,13 +141,11 @@ function setupSocket(server) {
           newImagePublicId
         );
 
-        io.to(roomChat(chatId)).emit("receive_edited_message", payload);
-        const others = await chatController.getOtherUserIds(
+        await emitToChatAndUsers(
           chatId,
-          currentUserId
-        );
-        [...others, currentUserId].forEach((uid) =>
-          io.to(roomUser(uid)).emit("receive_edited_message", payload)
+          currentUserId,
+          "receive_edited_message",
+          payload
         );
       } catch (err) {
         emitError(socket, err, "edit_message failed");
@@ -161,6 +165,8 @@ function setupSocket(server) {
           currentUserId
         );
 
+        emitToChat(chatId, "message_deleted", payload);
+
         io.to(roomChat(chatId)).emit("message_deleted", payload);
 
         const others = await chatController.getOtherUserIds(
@@ -168,12 +174,14 @@ function setupSocket(server) {
           currentUserId
         );
 
-        for (const uid of [...others, currentUserId]) {
+        const _io = getIO();
+        const everyone = [...others, currentUserId];
+        for (const uid of everyone) {
           const unreadCount = await messageController.countUnreadForUser(
             chatId,
             uid
           );
-          io.to(roomUser(uid)).emit("message_deleted", {
+          _io.to(roomUser(uid)).emit("message_deleted", {
             ...payload,
             unreadCount,
           });
@@ -195,13 +203,11 @@ function setupSocket(server) {
           currentUserId
         );
 
-        io.to(roomChat(chatId)).emit("messages_read", payload);
-        const others = await chatController.getOtherUserIds(
+        await emitToChatAndUsers(
           chatId,
-          currentUserId
-        );
-        [...others, currentUserId].forEach((uid) =>
-          io.to(roomUser(uid)).emit("messages_read", payload)
+          currentUserId,
+          "messages_read",
+          payload
         );
       } catch (err) {
         emitError(socket, err, "read_message failed");

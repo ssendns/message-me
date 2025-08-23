@@ -6,6 +6,7 @@ const {
   isAdminOrOwner,
 } = require("../../utils/chatUtils");
 const { createSystemMessage } = require("../../utils/systemMessage");
+const { emitToChat } = require("../../socket/hub");
 
 const deleteGroup = async (req, res) => {
   const userId = Number(req.user.userId);
@@ -113,24 +114,26 @@ const editGroup = async (req, res) => {
         typeof dataToUpdate.title !== "undefined" &&
         dataToUpdate.title !== chat.title
       ) {
-        await createSystemMessage(prisma, {
+        const systemMessage = await createSystemMessage(prisma, {
           chatId,
           action: "title_changed",
-          actorId: userId,
+          userId,
           extra: { fromTitle: chat.title, toTitle: dataToUpdate.title },
         });
+        emitToChat(chatId, "receive_message", systemMessage);
       }
 
       const avatarTouched =
         Object.prototype.hasOwnProperty.call(dataToUpdate, "avatarUrl") ||
         Object.prototype.hasOwnProperty.call(dataToUpdate, "avatarPublicId");
       if (avatarTouched) {
-        await createSystemMessage(prisma, {
+        const systemMessage = await createSystemMessage(prisma, {
           chatId,
           action: "avatar_changed",
-          actorId: userId,
+          userId,
           extra: { to: updated.avatarUrl || null },
         });
+        emitToChat(chatId, "receive_message", systemMessage);
       }
     } catch (err) {
       console.error("system message (editGroup) failed:", err);
@@ -170,11 +173,12 @@ const leaveGroup = async (req, res) => {
       await tx.chatParticipant.delete({
         where: { chatId_userId: { chatId, userId } },
       });
-      await createSystemMessage(tx, {
+      const systemMessage = await createSystemMessage(tx, {
         chatId,
         action: "member_left",
         userId,
       });
+      emitToChat(chatId, "receive_message", systemMessage);
     });
 
     return res.json({ ok: true });
