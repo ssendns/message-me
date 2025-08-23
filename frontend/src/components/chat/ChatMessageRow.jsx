@@ -1,5 +1,15 @@
 import Message from "../message/Message";
 import { DateLabel, formatDate } from "../../utils/chatUtils";
+import SystemMessage from "./SystemMessage";
+import { systemText } from "../../utils/systemMessageClient";
+
+function participantsFromMap(nameById) {
+  const arr = [];
+  nameById.forEach((username, idStr) => {
+    arr.push({ id: Number(idStr), username });
+  });
+  return arr;
+}
 
 export default function ChatMessageRow({
   item,
@@ -15,6 +25,18 @@ export default function ChatMessageRow({
   if (!prev?.__divider) {
     const prevDate = prev?.createdAt ? formatDate(prev.createdAt) : null;
     showDate = !!dateLabel && dateLabel !== prevDate;
+  }
+
+  if (item.type === "SYSTEM") {
+    const key = `${item.id}-${item.updatedAt ?? item.createdAt ?? ""}`;
+    const text = systemText(item, participantsFromMap(nameById), currentUserId);
+
+    return (
+      <div key={key} ref={setMsgRef(item.id)}>
+        {showDate && <DateLabel date={dateLabel} />}
+        <SystemMessage text={text} />
+      </div>
+    );
   }
 
   const isOwn = item.fromId === currentUserId;
