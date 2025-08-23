@@ -6,7 +6,7 @@ const authMiddleware = async (req, res, next) => {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res
       .status(401)
-      .json({ error: "authorization header missing or inalid" });
+      .json({ error: "authorization header missing or invalid" });
   }
 
   const token = authHeader.split(" ")[1];
