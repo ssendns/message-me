@@ -108,7 +108,13 @@ export function getChat({ chatId, token }) {
 
 // group
 
-export function createGroup({ token, title, participantIds }) {
+export function createGroup({
+  token,
+  title,
+  participantIds,
+  avatarUrl,
+  avatarPublicId,
+}) {
   return request("/chats", {
     method: "POST",
     token,
@@ -116,6 +122,8 @@ export function createGroup({ token, title, participantIds }) {
       type: "GROUP",
       title,
       participantIds,
+      avatarUrl,
+      avatarPublicId,
     },
   });
 }

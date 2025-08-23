@@ -58,19 +58,11 @@ export default function CreateGroupPage() {
         token,
         title: title.trim(),
         participantIds: Array.from(selected),
+        avatarUrl: avatarDraft?.url ?? null,
+        avatarPublicId: avatarDraft?.publicId ?? null,
       });
       const chatId = res?.id ?? res?.chat?.id;
       if (!chatId) throw new Error("failed to create group");
-
-      if (avatarDraft?.url || avatarDraft === null) {
-        await editGroup({
-          token,
-          chatId,
-          avatarUrl: avatarDraft?.url ?? null,
-          avatarPublicId: avatarDraft?.publicId ?? null,
-        });
-      }
-
       navigate("/");
     } catch (err) {
       console.error("create group failed:", err);

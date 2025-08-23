@@ -151,10 +151,11 @@ const getChat = async (req, res) => {
   }
 };
 
-// body: { type: 'DIRECT'|'GROUP', peerId? (for direct), title? (for group), participantIds? (for group) }
+// body: { type: 'DIRECT'|'GROUP', peerId? (for direct), title? (for group), participantIds? (for group), avatarUrl?, avatarPublicId? (for group)}
 const createChat = async (req, res) => {
   const userId = Number(req.user.userId);
-  const { type, peerId, title, participantIds } = req.body;
+  const { type, peerId, title, participantIds, avatarUrl, avatarPublicId } =
+    req.body;
 
   try {
     if (type === "DIRECT") {
@@ -205,14 +206,20 @@ const createChat = async (req, res) => {
         role: id === userId ? "OWNER" : "MEMBER",
       }));
 
-      const group = await prisma.$transaction(async (tx) => {
-        const chat = await tx.chat.create({
+      const chat = await prisma.$transaction(async (tx) => {
+        const created = await tx.chat.create({
           data: {
             type: "GROUP",
             title: title.trim(),
+            avatarUrl:
+              typeof avatarUrl === "undefined" ? null : avatarUrl || null,
+            avatarPublicId:
+              typeof avatarPublicId === "undefined"
+                ? null
+                : avatarPublicId || null,
             participants: { create: participantsCreate },
           },
-          select: { id: true },
+          select: { id: true, title: true },
         });
 
         const owner = await tx.user.findUnique({
@@ -221,18 +228,18 @@ const createChat = async (req, res) => {
         });
 
         const systemMessage = await createSystemMessage(tx, {
-          chatId: chat.id,
+          chatId: created.id,
           action: "group_created",
           userId,
           extra: { userName: owner?.username, title: title.trim() },
         });
 
-        emitToChat(chat.id, "receive_message", systemMessage);
+        emitToChat(created.id, "receive_message", systemMessage);
 
-        return chat;
+        return created;
       });
 
-      return res.status(201).json({ id: group.id });
+      return res.status(201).json({ id: chat.id });
     }
 
     return res.status(400).json({ message: "invalid chat type" });
