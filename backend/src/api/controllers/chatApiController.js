@@ -79,11 +79,6 @@ const getChat = async (req, res) => {
   try {
     const chatId = Number(req.params.chatId);
     const userId = Number(req.user.userId);
-    if (!chatId) {
-      return res.status(400).json({ message: "invalid chatId" });
-    }
-
-    await ensureMember(chatId, userId);
 
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
@@ -155,7 +150,7 @@ const getChat = async (req, res) => {
 const createChat = async (req, res) => {
   const userId = Number(req.user.userId);
   const { type, peerId, title, participantIds, avatarUrl, avatarPublicId } =
-    req.body;
+    req.body || {};
 
   try {
     if (type === "DIRECT") {

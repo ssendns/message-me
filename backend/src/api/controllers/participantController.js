@@ -1,9 +1,4 @@
 const prisma = require("../../utils/prisma");
-const {
-  ensureMember,
-  getRole,
-  isAdminOrOwner,
-} = require("../../utils/chatUtils");
 const { createSystemMessage } = require("../../utils/systemMessage");
 const { emitToChat } = require("../../socket/hub");
 
@@ -12,36 +7,23 @@ const addParticipant = async (req, res) => {
   const chatId = Number(req.params.chatId);
   const targetId = Number(req.body.userId);
   try {
-    await ensureMember(chatId, userId);
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
-      select: { type: true },
-    });
-    if (!chat) return res.status(404).json({ message: "chat not found" });
-    if (chat.type !== "GROUP")
-      return res.status(400).json({ message: "not group chat" });
-
-    const user = await getRole(chatId, userId);
-    if (!user || !isAdminOrOwner(user.role)) {
-      return res.status(403).json({ error: "insufficient permissions" });
-    }
-
     await prisma.$transaction(async (tx) => {
       await tx.chatParticipant.upsert({
         where: { chatId_userId: { chatId, userId: targetId } },
         create: { chatId, userId: targetId, role: "MEMBER" },
         update: {},
       });
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { username: true },
-      });
-      const target = await tx.user.findUnique({
-        where: { id: targetId },
-        select: { username: true },
-      });
-
-      const systemMessage = await createSystemMessage(prisma, {
+      const [user, target] = await Promise.all([
+        tx.user.findUnique({
+          where: { id: userId },
+          select: { username: true },
+        }),
+        tx.user.findUnique({
+          where: { id: targetId },
+          select: { username: true },
+        }),
+      ]);
+      const systemMessage = await createSystemMessage(tx, {
         chatId,
         action: "member_added",
         userId,
@@ -67,48 +49,30 @@ const removeParticipant = async (req, res) => {
   const chatId = Number(req.params.chatId);
   const targetId = Number(req.params.userId);
   try {
-    await ensureMember(chatId, userId);
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
-      select: { type: true },
-    });
-    if (!chat) return res.status(404).json({ message: "chat not found" });
-    if (chat.type !== "GROUP")
-      return res.status(400).json({ message: "not group chat" });
-
-    const user = await getRole(chatId, userId);
-    if (!user || !isAdminOrOwner(user.role)) {
-      return res.status(403).json({ error: "insufficient permissions" });
-    }
-
     const target = await prisma.chatParticipant.findUnique({
       where: { chatId_userId: { chatId, userId: targetId } },
       select: { role: true },
     });
     if (!target) return res.json({ ok: true });
-
     if (target.role === "OWNER") {
       return res.status(400).json({ message: "cannot remove owner" });
-    }
-    if (user.role === "ADMIN" && target.role === "ADMIN") {
-      return res
-        .status(403)
-        .json({ message: "admin cannot remove another admin" });
     }
 
     await prisma.$transaction(async (tx) => {
       await tx.chatParticipant.delete({
         where: { chatId_userId: { chatId, userId: targetId } },
       });
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { username: true },
-      });
-      const target = await tx.user.findUnique({
-        where: { id: targetId },
-        select: { username: true },
-      });
-      const systemMessage = await createSystemMessage(prisma, {
+      const [user, target] = await Promise.all([
+        tx.user.findUnique({
+          where: { id: userId },
+          select: { username: true },
+        }),
+        tx.user.findUnique({
+          where: { id: targetId },
+          select: { username: true },
+        }),
+      ]);
+      const systemMessage = await createSystemMessage(tx, {
         chatId,
         action: "member_removed",
         userId,
@@ -129,16 +93,10 @@ const removeParticipant = async (req, res) => {
 };
 
 const promoteToAdmin = async (req, res) => {
+  const userId = Number(req.user.userId);
+  const chatId = Number(req.params.chatId);
+  const targetId = Number(req.body.userId);
   try {
-    const userId = Number(req.user.userId);
-    const chatId = Number(req.params.chatId);
-    const targetId = Number(req.body.userId);
-
-    await ensureMember(chatId, userId);
-    const user = await getRole(chatId, userId);
-    if (!user || user.role !== "OWNER")
-      return res.status(403).json({ error: "only owner can promote" });
-
     const target = await prisma.chatParticipant.findUnique({
       where: { chatId_userId: { chatId, userId: targetId } },
       select: { role: true },
@@ -152,15 +110,17 @@ const promoteToAdmin = async (req, res) => {
         where: { chatId_userId: { chatId, userId: targetId } },
         data: { role: "ADMIN" },
       });
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { username: true },
-      });
-      const target = await tx.user.findUnique({
-        where: { id: targetId },
-        select: { username: true },
-      });
-      const systemMessage = await createSystemMessage(prisma, {
+      const [user, target] = await Promise.all([
+        tx.user.findUnique({
+          where: { id: userId },
+          select: { username: true },
+        }),
+        tx.user.findUnique({
+          where: { id: targetId },
+          select: { username: true },
+        }),
+      ]);
+      const systemMessage = await createSystemMessage(tx, {
         chatId,
         action: "promoted_to_admin",
         userId,
@@ -181,16 +141,10 @@ const promoteToAdmin = async (req, res) => {
 };
 
 const demoteFromAdmin = async (req, res) => {
+  const userId = Number(req.user.userId);
+  const chatId = Number(req.params.chatId);
+  const targetId = Number(req.params.userId);
   try {
-    const userId = Number(req.user.userId);
-    const chatId = Number(req.params.chatId);
-    const targetId = Number(req.params.userId);
-
-    await ensureMember(chatId, userId);
-    const user = await getRole(chatId, userId);
-    if (!user || user.role !== "OWNER")
-      return res.status(403).json({ error: "only owner can demote" });
-
     const target = await prisma.chatParticipant.findUnique({
       where: { chatId_userId: { chatId, userId: targetId } },
       select: { role: true },
@@ -204,15 +158,17 @@ const demoteFromAdmin = async (req, res) => {
         where: { chatId_userId: { chatId, userId: targetId } },
         data: { role: "MEMBER" },
       });
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { username: true },
-      });
-      const target = await tx.user.findUnique({
-        where: { id: targetId },
-        select: { username: true },
-      });
-      const systemMessage = await createSystemMessage(prisma, {
+      const [user, target] = await Promise.all([
+        tx.user.findUnique({
+          where: { id: userId },
+          select: { username: true },
+        }),
+        tx.user.findUnique({
+          where: { id: targetId },
+          select: { username: true },
+        }),
+      ]);
+      const systemMessage = await createSystemMessage(tx, {
         chatId,
         action: "demoted_from_admin",
         userId,

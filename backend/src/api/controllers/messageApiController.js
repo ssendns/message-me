@@ -1,5 +1,4 @@
 const prisma = require("../../utils/prisma");
-const { ensureMember } = require("../../utils/chatUtils");
 
 const MESSAGE_SELECT = {
   id: true,
@@ -17,26 +16,20 @@ const MESSAGE_SELECT = {
 };
 
 const getChatMessages = async (req, res) => {
-  const userId = Number(req.user.userId);
   const chatId = Number(req.params.chatId);
   const limit = Math.min(Number(req.query.limit) || 30, 100);
   const cursor = req.query.cursor ? Number(req.query.cursor) : null;
   const direction = (req.query.direction || "older").toLowerCase();
 
   try {
-    await ensureMember(chatId, userId);
-
-    let items = [];
-
     if (direction === "newer") {
-      items = await prisma.message.findMany({
+      const items = await prisma.message.findMany({
         where: { chatId },
         orderBy: { id: "asc" },
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
         take: limit,
         select: MESSAGE_SELECT,
       });
-
       return res.json({
         messages: items,
         nextCursor: items.at(-1)?.id ?? null,
@@ -53,11 +46,10 @@ const getChatMessages = async (req, res) => {
 
     const messages = olderBatch.slice().reverse();
     const nextCursor = messages[0]?.id ?? null;
-
     return res.json({ messages, nextCursor });
-  } catch (e) {
-    console.error("listMessages failed:", e);
-    res.status(e.status || 500).json({ message: e.message || "failed" });
+  } catch (err) {
+    console.error("listMessages failed:", err);
+    res.status(err.status || 500).json({ message: err.message || "failed" });
   }
 };
 
@@ -67,8 +59,6 @@ const createMessage = async (req, res) => {
   const { text, imageUrl, imagePublicId } = req.body || {};
 
   try {
-    await ensureMember(chatId, userId);
-
     const hasText = typeof text === "string" && text.trim().length > 0;
     if (!hasText && !imageUrl) {
       return res
@@ -103,20 +93,15 @@ const createMessage = async (req, res) => {
 };
 
 const updateMessage = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const chatId = Number(req.params.chatId);
   const messageId = Number(req.params.messageId);
   const { text, imageUrl, imagePublicId } = req.body || {};
 
   try {
-    await ensureMember(chatId, userId);
-
     const existing = await prisma.message.findUnique({
       where: { id: messageId },
     });
-    if (!existing || existing.chatId !== chatId || existing.fromId !== userId) {
-      return res.status(403).json({ message: "cannot edit this message" });
-    }
+    if (!existing)
+      return res.status(404).json({ message: "message not found" });
 
     const nextText = typeof text === "string" ? text.trim() : existing.text;
     const nextImageUrl =
@@ -146,20 +131,10 @@ const updateMessage = async (req, res) => {
 };
 
 const deleteMessage = async (req, res) => {
-  const userId = Number(req.user.userId);
   const chatId = Number(req.params.chatId);
   const messageId = Number(req.params.messageId);
 
   try {
-    await ensureMember(chatId, userId);
-
-    const existing = await prisma.message.findUnique({
-      where: { id: messageId },
-    });
-    if (!existing || existing.chatId !== chatId || existing.fromId !== userId) {
-      return res.status(403).json({ message: "cannot delete this message" });
-    }
-
     await prisma.message.delete({ where: { id: messageId } });
 
     const nextLast = await prisma.message.findFirst({
