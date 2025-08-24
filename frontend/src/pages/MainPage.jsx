@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatList from "../components/chatList/ChatList";
 import ChatArea from "../components/chat/ChatArea";
@@ -8,21 +8,24 @@ import useSocket from "../hooks/useSocket";
 import SOCKET_EVENTS from "../services/socketEvents";
 
 export default function MainPage() {
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showWelcome, setShowWelcome] = useState(false);
-
-  const token = localStorage.getItem("token");
-  const username = localStorage.getItem("username");
-  const currentUserId = Number(localStorage.getItem("id"));
-
   const navigate = useNavigate();
-  const sidebarRef = useRef(null);
   const { socket, isReady } = useSocket();
 
-  const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
+  const token = useMemo(() => localStorage.getItem("token") || "", []);
+  const username = useMemo(() => localStorage.getItem("username") || "", []);
+  const currentUserId = useMemo(
+    () => Number(localStorage.getItem("id")) || 0,
+    []
+  );
+
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
+  const sidebarRef = useRef(null);
+
+  const toggleSidebar = useCallback(() => setSidebarOpen((s) => !s), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const handleChatSelect = useCallback((chat) => setSelectedChat(chat), []);
   const handleBack = useCallback(() => setSelectedChat(null), []);
@@ -31,7 +34,9 @@ export default function MainPage() {
 
   const handleLogout = useCallback(() => {
     localStorage.clear();
-    if (socket?.connected) socket.disconnect();
+    try {
+      socket?.disconnect();
+    } catch {}
     navigate("/log-in");
   }, [navigate, socket]);
 
@@ -52,41 +57,36 @@ export default function MainPage() {
   }, []);
 
   useEffect(() => {
+    if (!sidebarOpen) return;
     const handleClickOutside = (e) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
         closeSidebar();
       }
     };
-
-    if (sidebarOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
-
+    document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sidebarOpen, closeSidebar]);
 
   useEffect(() => {
-    const alreadyVisited = localStorage.getItem("alreadyVisited");
-    if (!alreadyVisited) {
-      setShowWelcome(true);
-    }
+    if (!localStorage.getItem("alreadyVisited")) setShowWelcome(true);
   }, []);
 
   useEffect(() => {
-    if (socket && isReady && currentUserId) {
-      socket.emit(SOCKET_EVENTS.JOIN, { userId: currentUserId });
-      return () => {};
-    }
-  }, [socket, isReady, currentUserId]);
+    if (!socket || !currentUserId) return;
 
-  if (!isReady) {
+    const join = () =>
+      socket.emit(SOCKET_EVENTS.JOIN, { userId: Number(currentUserId) });
+
+    if (socket.connected) join();
+
+    socket.on("connect", join);
+    return () => socket.off("connect", join);
+  }, [socket, currentUserId]);
+
+  if (token && !isReady) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <p className="text-muted text-lg animate-pulse">
-          connecting to socket…
-        </p>
+        <p className="text-muted text-lg animate-pulse">loading…</p>
       </div>
     );
   }
