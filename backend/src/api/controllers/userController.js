@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const cloudinary = require("../../../cloudinary");
 
 const getAllUsers = async (req, res) => {
-  const userId = req.user.userId;
+  const userId = req.userId;
   const users = await prisma.user.findMany({
     where: {
       id: { not: userId },
@@ -18,7 +18,7 @@ const getAllUsers = async (req, res) => {
 };
 
 const getCurrentUser = async (req, res) => {
-  const userId = req.user.userId;
+  const userId = req.userId;
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -48,7 +48,7 @@ const getUserByUsername = async (req, res) => {
 
 const editUser = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.userId;
     const { newUsername, newPassword, avatarUrl, avatarPublicId } =
       req.body || {};
 
@@ -124,7 +124,7 @@ const editUser = async (req, res) => {
 };
 
 const deleteProfile = async (req, res) => {
-  const userId = req.user.userId;
+  const userId = req.userId;
   await prisma.user.delete({ where: { id: userId } });
 
   res.status(204).send();
