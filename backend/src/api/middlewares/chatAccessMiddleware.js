@@ -5,7 +5,7 @@ const isAdminOrOwner = (role) => role === "ADMIN" || role === "OWNER";
 
 async function ensureMember(req, res, next) {
   try {
-    const userId = Number(req.user.userId);
+    const userId = Number(req.userId);
     const chatId = Number(req.params.chatId);
     if (!chatId) return res.status(400).json({ error: "invalid chatId" });
 
@@ -22,7 +22,8 @@ async function ensureMember(req, res, next) {
     if (!membership) return res.status(403).json({ error: "forbidden" });
 
     req.chat = chat;
-    req.membership = membership;
+    req.chatId = chat.id;
+    req.role = membership.role;
     next();
   } catch (err) {
     next(err);
@@ -37,14 +38,14 @@ function requireGroup(req, res, next) {
 }
 
 function requireAdminOrOwner(req, res, next) {
-  if (!req.membership?.role || !isAdminOrOwner(req.membership.role)) {
+  if (!req.role || !isAdminOrOwner(req.role)) {
     return res.status(403).json({ error: "insufficient permissions" });
   }
   next();
 }
 
 function requireOwner(req, res, next) {
-  if (!req.membership?.role || !isOwner(req.membership.role)) {
+  if (!req.role || !isOwner(req.role)) {
     return res.status(403).json({ error: "owner only" });
   }
   next();
