@@ -1,16 +1,40 @@
 const prisma = require("./prisma");
 
-const sanitizeText = (s) => {
-  if (typeof s !== "string") return "";
-  return s.trim();
+const markMessagesAsRead = async (chatId, readerId) => {
+  const result = await prisma.message.updateMany({
+    where: {
+      chatId,
+      read: false,
+      NOT: { fromId: readerId },
+    },
+    data: { read: true },
+  });
+  return { chatId, readerId, updated: result.count };
 };
 
-const getOwnedMessageOrThrow = async (id, chatId, fromId) => {
-  const message = await prisma.message.findUnique({ where: { id } });
-  if (!message || message.chatId !== chatId || message.fromId !== fromId) {
-    throw new Error("you cannot modify this message");
-  }
-  return message;
+const countUnreadForUser = async (chatId, userId) => {
+  return prisma.message.count({
+    where: {
+      chatId,
+      read: false,
+      NOT: { fromId: userId },
+    },
+  });
 };
 
-module.exports = { sanitizeText, getOwnedMessageOrThrow };
+const MESSAGE_SELECT = {
+  id: true,
+  chatId: true,
+  fromId: true,
+  text: true,
+  imageUrl: true,
+  imagePublicId: true,
+  read: true,
+  edited: true,
+  createdAt: true,
+  updatedAt: true,
+  type: true,
+  meta: true,
+};
+
+module.exports = { markMessagesAsRead, countUnreadForUser, MESSAGE_SELECT };
