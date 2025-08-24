@@ -1,12 +1,11 @@
 import { useState, useRef, useMemo, useCallback } from "react";
-import useSocket from "../../hooks/useSocket";
 import MessageMenu from "./MessageMenu";
 import EditInput from "./EditInput";
 import MessageContent from "./MessageContent";
 import useMenu from "../../hooks/useMenu";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
-import SOCKET_EVENTS from "../../services/socketEvents";
+import useMessage from "../../hooks/useMessage";
 
 export default function Message({ message, currentUserId, authorName = null }) {
   const isOwn = message.fromId === currentUserId;
@@ -17,11 +16,13 @@ export default function Message({ message, currentUserId, authorName = null }) {
   const [editImagePublicId, setEditImagePublicId] = useState(
     message.imagePublicId || null
   );
+  const [saving, setSaving] = useState(false);
 
-  const { socket, isReady } = useSocket();
   const fileInputRef = useRef(null);
   const { uploadImage, loading: uploading } = useUploadImage();
   const { rowRef, open, openUpwards, openMenu, closeMenu } = useMenu();
+
+  const { editMessage, deleteMessage } = useMessage();
 
   const time = useMemo(() => {
     return (
@@ -33,14 +34,14 @@ export default function Message({ message, currentUserId, authorName = null }) {
     );
   }, [message.createdAt]);
 
-  const handleDelete = useCallback(() => {
-    if (!isReady) return;
-    socket.emit(SOCKET_EVENTS.DELETE_MESSAGE, {
-      id: message.id,
-      chatId: message.chatId,
-      fromId: message.fromId,
-    });
-  }, [isReady, socket, message.id, message.chatId, message.fromId]);
+  const handleDelete = useCallback(async () => {
+    try {
+      setSaving(true);
+      await deleteMessage({ id: message.id, chatId: message.chatId });
+    } finally {
+      setSaving(false);
+    }
+  }, [deleteMessage, message.id, message.chatId]);
 
   const handleEdit = useCallback(() => {
     setIsEditing(true);
@@ -70,21 +71,24 @@ export default function Message({ message, currentUserId, authorName = null }) {
     setEditImagePublicId(null);
   }, []);
 
-  const handleEditSubmit = useCallback(() => {
-    socket.emit(SOCKET_EVENTS.EDIT_MESSAGE, {
-      id: message.id,
-      chatId: message.chatId,
-      fromId: message.fromId,
-      newText: editText,
-      newImageUrl: editImageUrl,
-      newImagePublicId: editImagePublicId,
-    });
-    setIsEditing(false);
+  const handleEditSubmit = useCallback(async () => {
+    try {
+      setSaving(true);
+      await editMessage({
+        id: message.id,
+        chatId: message.chatId,
+        newText: editText,
+        newImageUrl: editImageUrl,
+        newImagePublicId: editImagePublicId,
+      });
+      setIsEditing(false);
+    } finally {
+      setSaving(false);
+    }
   }, [
-    socket,
+    editMessage,
     message.id,
     message.chatId,
-    message.fromId,
     editText,
     editImageUrl,
     editImagePublicId,
@@ -108,6 +112,8 @@ export default function Message({ message, currentUserId, authorName = null }) {
       closeMenu();
     }
   }, [message.text, closeMenu]);
+
+  const menuDisabled = saving || uploading;
 
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"} my-2`}>
@@ -183,7 +189,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
               onChange={setEditText}
               onSave={handleEditSubmit}
               onCancel={() => setIsEditing(false)}
-              saveDisabled={uploading}
+              saveDisabled={uploading || saving}
             />
           </div>
         ) : (
@@ -201,9 +207,9 @@ export default function Message({ message, currentUserId, authorName = null }) {
           <MessageMenu
             isOwn={isOwn}
             openUpwards={openUpwards}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onCopy={handleCopy}
+            onEdit={menuDisabled ? undefined : handleEdit}
+            onDelete={menuDisabled ? undefined : handleDelete}
+            onCopy={menuDisabled ? undefined : handleCopy}
           />
         )}
       </div>
