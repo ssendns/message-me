@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getChatMessages } from "../services/api";
+import { getChatMessages, markRead } from "../services/api";
 import useSocket from "./useSocket";
 import SOCKET_EVENTS from "../services/socketEvents";
 const PAGE = 30;
@@ -11,6 +11,7 @@ export default function useChatMessages({ chatId, currentUserId }) {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const oldestCursorRef = useRef(null);
+  const joinedChatRef = useRef(null);
   const { socket } = useSocket();
   const token = localStorage.getItem("token");
 
@@ -75,17 +76,38 @@ export default function useChatMessages({ chatId, currentUserId }) {
   }, [chatId, token, hasMore, loadingOlder]);
 
   useEffect(() => {
-    if (!chatId || !currentUserId || !socket) return;
+    if (!chatId || !socket) return;
 
-    socket.emit(SOCKET_EVENTS.JOIN_CHAT, { chatId: Number(chatId) });
+    const cid = String(chatId);
+    if (joinedChatRef.current !== cid) {
+      if (joinedChatRef.current) {
+        socket.emit(SOCKET_EVENTS.LEAVE_CHAT, {
+          chatId: Number(joinedChatRef.current),
+        });
+      }
+      socket.emit(SOCKET_EVENTS.JOIN_CHAT, { chatId: Number(cid) });
+      joinedChatRef.current = cid;
+    }
 
+    return () => {
+      if (joinedChatRef.current) {
+        socket.emit(SOCKET_EVENTS.LEAVE_CHAT, {
+          chatId: Number(joinedChatRef.current),
+        });
+        joinedChatRef.current = null;
+      }
+    };
+  }, [socket, chatId]);
+
+  useEffect(() => {
+    if (!socket || !chatId || !currentUserId) return;
     const handleReceiveMessage = (message) => {
       if (String(message.chatId) !== String(chatId)) return;
       setMessages((prev) => {
         if (prev.some((m) => m.id === message.id)) return prev;
         const next = [...prev, message];
         if (message.fromId !== currentUserId && !message.read) {
-          socket.emit("read_messages", { chatId: Number(chatId) });
+          markRead({ chatId, token }).catch(() => {});
           return next.map((m) =>
             String(m.chatId) === String(chatId) && m.fromId !== currentUserId
               ? { ...m, read: true }
@@ -97,10 +119,8 @@ export default function useChatMessages({ chatId, currentUserId }) {
     };
 
     socket.on(SOCKET_EVENTS.RECEIVE_MESSAGE, handleReceiveMessage);
-
     return () => {
       socket.off(SOCKET_EVENTS.RECEIVE_MESSAGE, handleReceiveMessage);
-      socket.emit(SOCKET_EVENTS.LEAVE_CHAT, { chatId: Number(chatId) });
     };
   }, [socket, currentUserId, chatId]);
 
@@ -125,20 +145,21 @@ export default function useChatMessages({ chatId, currentUserId }) {
     };
 
     socket.on(SOCKET_EVENTS.MESSAGES_READ, handleMessagesRead);
-    return () => socket.off("messages_read", handleMessagesRead);
+    return () => socket.off(SOCKET_EVENTS.MESSAGES_READ, handleMessagesRead);
   }, [socket, chatId, currentUserId]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !chatId) return;
 
-    const handleEditedMessage = ({
-      id,
-      chatId: cid,
-      text,
-      imageUrl,
-      imagePublicId,
-      edited,
-    }) => {
+    const handleEditedMessage = (payload) => {
+      const {
+        id,
+        chatId: cid,
+        text,
+        imageUrl,
+        imagePublicId,
+        edited,
+      } = payload;
       if (String(cid) !== String(chatId)) return;
       setMessages((prev) =>
         prev.map((message) =>
@@ -178,7 +199,7 @@ export default function useChatMessages({ chatId, currentUserId }) {
         !message.read
     );
     if (hasUnreadIncoming) {
-      socket.emit("read_messages", { chatId });
+      markRead({ chatId, token }).catch(() => {});
       setMessages((prev) =>
         prev.map((message) =>
           String(message.chatId) === String(chatId) &&
