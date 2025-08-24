@@ -1,17 +1,4 @@
-const MESSAGE_SELECT = {
-  id: true,
-  chatId: true,
-  fromId: true,
-  text: true,
-  imageUrl: true,
-  imagePublicId: true,
-  read: true,
-  edited: true,
-  createdAt: true,
-  updatedAt: true,
-  type: true,
-  meta: true,
-};
+const { MESSAGE_SELECT } = require("./messageUtils");
 
 async function createSystemMessage(
   prisma,
@@ -35,4 +22,4 @@ async function createSystemMessage(
   return message;
 }
 
-module.exports = { createSystemMessage, MESSAGE_SELECT };
+module.exports = { createSystemMessage };
