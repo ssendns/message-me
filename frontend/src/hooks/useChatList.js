@@ -83,7 +83,7 @@ export default function useChatList(
     let cancelled = false;
 
     const run = async () => {
-      const search = (searchTerm || "").trim().toLowerCase();
+      const search = searchRef.current;
       if (!token || !search) {
         setSuggestedUsers([]);
         return;
@@ -94,10 +94,10 @@ export default function useChatList(
 
         const chattedIds = new Set(
           (chats || [])
-            .filter((c) => !c.isGroup)
+            .filter((chat) => !chat.isGroup)
             .flatMap((chat) =>
               (chat.participants || [])
-                .map((p) => p.id)
+                .map((participant) => participant.id)
                 .filter((id) => id !== currentUserId)
             )
         );
@@ -131,7 +131,7 @@ export default function useChatList(
     if (!socket) return;
 
     const handleReceive = (payload) => {
-      const { chatId, fromId, type } = payload;
+      const { chatId, fromId } = payload;
       const isOwn = fromId === currentUserId;
       const isOpen = String(chatId) === String(currentChat?.id);
 
@@ -142,12 +142,12 @@ export default function useChatList(
               ? {
                   ...chat,
                   ...(() => {
-                    const p = getPreview(payload, chat);
+                    const preview = getPreview(payload, chat);
                     return {
-                      lastMessageText: p.text,
-                      lastMessageImageUrl: p.imageUrl,
-                      lastMessageId: p.id,
-                      time: p.time || new Date().toISOString(),
+                      lastMessageText: preview.text,
+                      lastMessageImageUrl: preview.imageUrl,
+                      lastMessageId: preview.id,
+                      time: preview.time || new Date().toISOString(),
                     };
                   })(),
                   unreadCount: isOwn
@@ -180,12 +180,12 @@ export default function useChatList(
                 ? {
                     ...chat,
                     ...(() => {
-                      const p = getPreview(nextLast, chat);
+                      const preview = getPreview(nextLast, chat);
                       return {
-                        lastMessageText: p.text,
-                        lastMessageImageUrl: p.imageUrl,
-                        lastMessageId: p.id,
-                        time: p.time,
+                        lastMessageText: preview.text,
+                        lastMessageImageUrl: preview.imageUrl,
+                        lastMessageId: preview.id,
+                        time: preview.time,
                       };
                     })(),
                   }
@@ -198,8 +198,12 @@ export default function useChatList(
                   }
               : chat;
 
-            const uc = unreadCount ?? updated.unreadCount ?? 0;
-            return { ...updated, unreadCount: uc, hasUnread: uc > 0 };
+            const newUnreadCount = unreadCount ?? updated.unreadCount ?? 0;
+            return {
+              ...updated,
+              unreadCount: newUnreadCount,
+              hasUnread: newUnreadCount > 0,
+            };
           })
         )
       );
@@ -217,11 +221,11 @@ export default function useChatList(
               ? {
                   ...chat,
                   ...(() => {
-                    const p = getPreview(payload, chat);
+                    const preview = getPreview(payload, chat);
                     return {
-                      lastMessageText: p.text,
-                      lastMessageImageUrl: p.imageUrl,
-                      time: p.time || new Date().toISOString(),
+                      lastMessageText: preview.text,
+                      lastMessageImageUrl: preview.imageUrl,
+                      time: preview.time || new Date().toISOString(),
                     };
                   })(),
                   hasUnread: isOwn ? chat.hasUnread : !isOpen,
@@ -235,10 +239,10 @@ export default function useChatList(
     const handleMessagesRead = ({ chatId, readerId }) => {
       if (readerId === currentUserId) {
         setChats((prev) =>
-          prev.map((c) =>
-            String(c.id) === String(chatId)
-              ? { ...c, unreadCount: 0, hasUnread: false }
-              : c
+          prev.map((chat) =>
+            String(chat.id) === String(chatId)
+              ? { ...chat, unreadCount: 0, hasUnread: false }
+              : chat
           )
         );
       }
@@ -259,15 +263,12 @@ export default function useChatList(
 
   const listForUI = useMemo(() => {
     const search = (searchTerm || "").toLowerCase().trim();
-
     const base = !search
       ? chats
       : chats.filter((chat) =>
           (chat.displayName || "chat").toLowerCase().includes(search)
         );
-
     const withSuggestions = search ? base.concat(suggestedUsers) : base;
-
     return sortByTimeDesc(withSuggestions);
   }, [chats, suggestedUsers, searchTerm]);
 
