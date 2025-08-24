@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ChatBox from "./ChatBox";
 import ImageSendModal from "./ImageSendModal";
 import useChatMessages from "../../hooks/useChatMessages";
-import useSendMessage from "../../hooks/useSendMessage";
+import useMessage from "../../hooks/useMessage";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Paperclip, Info } from "lucide-react";
 import GroupInfoDrawer from "../group/GroupInfoDrawer";
@@ -41,7 +41,7 @@ export default function ChatArea({
       chatId,
       currentUserId,
     });
-  const { sendMessage } = useSendMessage(currentUserId);
+  const { sendMessage } = useMessage();
   const { uploadImage, loading, error } = useUploadImage();
   const membersCount = useMemo(() => participants.length, [participants]);
 
