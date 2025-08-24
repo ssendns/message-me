@@ -1,16 +1,19 @@
 const express = require("express");
 const router = express.Router();
-const authMiddleware = require("../middlewares/authMiddleware");
+const {
+  ensureAutentification,
+  ensureUserExists,
+} = require("../middlewares/authMiddleware");
 const {
   ensureMember,
   requireGroup,
   requireAdminOrOwner,
   requireOwner,
 } = require("../middlewares/chatAccessMiddleware");
-const chatController = require("../controllers/chatApiController");
+const chatController = require("../controllers/chatController");
 const groupController = require("../controllers/groupController");
 
-router.use(authMiddleware);
+router.use(ensureAutentification, ensureUserExists);
 
 router.post(
   "/:chatId/leave",
@@ -18,7 +21,7 @@ router.post(
   requireGroup,
   groupController.leaveGroup
 );
-
+router.patch("/:chatId/read", ensureMember, chatController.markRead);
 router.get("/:chatId", ensureMember, chatController.getChat);
 router.patch(
   "/:chatId",

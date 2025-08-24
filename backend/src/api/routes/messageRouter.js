@@ -1,11 +1,14 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true });
-const authMiddleware = require("../middlewares/authMiddleware");
+const {
+  ensureAutentification,
+  ensureUserExists,
+} = require("../middlewares/authMiddleware");
 const { ensureMember } = require("../middlewares/chatAccessMiddleware");
 const { ensureOwnMessage } = require("../middlewares/messageAccessMiddleware");
-const messageController = require("../controllers/messageApiController");
+const messageController = require("../controllers/messageController");
 
-router.use(authMiddleware, ensureMember);
+router.use(ensureAutentification, ensureUserExists, ensureMember);
 
 router.get("/", messageController.getChatMessages);
 router.post("/", messageController.createMessage);
