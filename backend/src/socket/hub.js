@@ -1,4 +1,4 @@
-const chatController = require("./controllers/chatSocketController");
+const { getOtherUserIds } = require("../utils/chatUtils");
 
 let io = null;
 
@@ -19,16 +19,20 @@ function emitToChat(chatId, event, payload) {
   getIO().to(roomChat(chatId)).emit(event, payload);
 }
 
+function emitToUser(userId, event, payload) {
+  getIO().to(roomUser(userId)).emit(event, payload);
+}
+
 function emitToUsers(userIds, event, payload) {
-  const _io = getIO();
+  if (!userIds || userIds.length === 0) return;
   for (const uid of userIds || []) {
-    _io.to(roomUser(uid)).emit(event, payload);
+    getIO().to(roomUser(uid)).emit(event, payload);
   }
 }
 
 async function emitToChatAndUsers(chatId, initiatorUserId, event, payload) {
   emitToChat(chatId, event, payload);
-  const others = await chatController.getOtherUserIds(chatId, initiatorUserId);
+  const others = await getOtherUserIds(chatId, initiatorUserId);
   emitToUsers([...others, initiatorUserId], event, payload);
 }
 
@@ -38,6 +42,7 @@ module.exports = {
   roomUser,
   roomChat,
   emitToChat,
+  emitToUser,
   emitToUsers,
   emitToChatAndUsers,
 };
