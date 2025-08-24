@@ -1,22 +1,18 @@
 const prisma = require("../../utils/prisma");
-
-const MESSAGE_SELECT = {
-  id: true,
-  chatId: true,
-  fromId: true,
-  text: true,
-  imageUrl: true,
-  imagePublicId: true,
-  read: true,
-  edited: true,
-  createdAt: true,
-  updatedAt: true,
-  type: true,
-  meta: true,
-};
+const {
+  emitToChatAndUsers,
+  emitToChat,
+  emitToUser,
+} = require("../../socket/hub");
+const {
+  countUnreadForUser,
+  MESSAGE_SELECT,
+} = require("../../utils/messageUtils");
+const { getOtherUserIds } = require("../../utils/chatUtils");
+const { SOCKET_EVENTS } = require("../../socket/socketEvents");
 
 const getChatMessages = async (req, res) => {
-  const chatId = Number(req.params.chatId);
+  const chatId = Number(req.chatId);
   const limit = Math.min(Number(req.query.limit) || 30, 100);
   const cursor = req.query.cursor ? Number(req.query.cursor) : null;
   const direction = (req.query.direction || "older").toLowerCase();
@@ -54,8 +50,8 @@ const getChatMessages = async (req, res) => {
 };
 
 const createMessage = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const chatId = Number(req.params.chatId);
+  const userId = Number(req.userId);
+  const chatId = Number(req.chatId);
   const { text, imageUrl, imagePublicId } = req.body || {};
 
   try {
@@ -84,6 +80,7 @@ const createMessage = async (req, res) => {
       data: { updatedAt: new Date() },
     });
 
+    emitToChatAndUsers(chatId, userId, SOCKET_EVENTS.RECEIVE_MESSAGE, message);
     res.status(201).json(message);
   } catch (err) {
     res
@@ -93,26 +90,22 @@ const createMessage = async (req, res) => {
 };
 
 const updateMessage = async (req, res) => {
-  const messageId = Number(req.params.messageId);
+  const userId = Number(req.userId);
+  const chatId = Number(req.chatId);
+  const message = req.message;
   const { text, imageUrl, imagePublicId } = req.body || {};
 
   try {
-    const existing = await prisma.message.findUnique({
-      where: { id: messageId },
-    });
-    if (!existing)
-      return res.status(404).json({ message: "message not found" });
-
-    const nextText = typeof text === "string" ? text.trim() : existing.text;
+    const nextText = typeof text === "string" ? text.trim() : message.text;
     const nextImageUrl =
-      typeof imageUrl !== "undefined" ? imageUrl : existing.imageUrl;
+      typeof imageUrl !== "undefined" ? imageUrl : message.imageUrl;
     const nextImagePublicId =
       typeof imagePublicId !== "undefined"
         ? imagePublicId
-        : existing.imagePublicId;
+        : message.imagePublicId;
 
     const updated = await prisma.message.update({
-      where: { id: messageId },
+      where: { id: message.id },
       data: {
         text: nextText,
         imageUrl: nextImageUrl,
@@ -122,6 +115,12 @@ const updateMessage = async (req, res) => {
       select: MESSAGE_SELECT,
     });
 
+    emitToChatAndUsers(
+      chatId,
+      userId,
+      SOCKET_EVENTS.RECEIVE_EDITED_MESSAGE,
+      updated
+    );
     res.status(200).json(updated);
   } catch (err) {
     res
@@ -131,8 +130,9 @@ const updateMessage = async (req, res) => {
 };
 
 const deleteMessage = async (req, res) => {
+  const userId = Number(req.user.userId);
   const chatId = Number(req.params.chatId);
-  const messageId = Number(req.params.messageId);
+  const messageId = Number(req.messageId);
 
   try {
     await prisma.message.delete({ where: { id: messageId } });
@@ -150,7 +150,7 @@ const deleteMessage = async (req, res) => {
       },
     });
 
-    res.status(200).json({
+    const payload = {
       id: messageId,
       chatId,
       nextLast: nextLast
@@ -159,11 +159,25 @@ const deleteMessage = async (req, res) => {
             text: nextLast.text ?? "",
             imageUrl: nextLast.imageUrl ?? null,
             createdAt: nextLast.createdAt,
-            type: nextLast.type,
-            meta: nextLast.meta,
+            type: nextLast.type || "TEXT",
+            meta: nextLast.meta || null,
           }
         : null,
-    });
+    };
+
+    emitToChat(chatId, SOCKET_EVENTS.MESSAGE_DELETED, payload);
+
+    const others = await getOtherUserIds(chatId, userId);
+    const everyone = [...others, userId];
+    for (const uid of everyone) {
+      const unreadCount = await countUnreadForUser(chatId, uid);
+      emitToUser(uid, SOCKET_EVENTS.MESSAGE_DELETED, {
+        ...payload,
+        unreadCount,
+      });
+    }
+
+    return res.json(payload);
   } catch (err) {
     res
       .status(500)
