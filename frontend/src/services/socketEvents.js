@@ -8,10 +8,9 @@ const SOCKET_EVENTS = {
   USER_OFFLINE: "user_offline",
 
   // chat
-  GET_OR_CREATE_CHAT: "get_or_create_chat",
-  CHAT_READY: "chat_ready",
   JOIN_CHAT: "join_chat",
   LEAVE_CHAT: "leave_chat",
+  CHAT_DELETED: "chat_deleted",
 
   // messages
   SEND_MESSAGE: "send_message",
@@ -25,6 +24,9 @@ const SOCKET_EVENTS = {
 
   READ_MESSAGES: "read_messages",
   MESSAGES_READ: "messages_read",
+
+  // error
+  ERROR: "error",
 };
 
 export default SOCKET_EVENTS;
