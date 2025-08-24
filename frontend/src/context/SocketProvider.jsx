@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import SocketContext from "./SocketContext";
+import SOCKET_EVENTS from "../services/socketEvents";
 
 export default function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
@@ -24,10 +25,17 @@ export default function SocketProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    if (!socket || !isReady) return;
+    const id = Number(localStorage.getItem("id"));
+    if (!id) return;
+    socket.emit(SOCKET_EVENTS.JOIN, { userId: id });
+  }, [socket, isReady]);
+
+  useEffect(() => {
     if (!socket) return;
-    const onErr = (e) => console.error("[socket error]", e);
-    socket.on("error", onErr);
-    return () => socket.off("error", onErr);
+    const onErr = (err) => console.error("[socket error]", err);
+    socket.on(SOCKET_EVENTS.ERROR, onErr);
+    return () => socket.off(SOCKET_EVENTS.ERROR, onErr);
   }, [socket]);
 
   return (
