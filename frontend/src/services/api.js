@@ -77,21 +77,12 @@ export function editUser({
 
 // chat
 
-export async function getChatMessages({
-  chatId,
-  token,
-  limit = 30,
-  cursor,
-  direction = "older",
-}) {
-  const q = new URLSearchParams();
-  if (limit) q.set("limit", String(limit));
-  if (cursor != null) q.set("cursor", String(cursor));
-  if (direction) q.set("direction", direction);
-
-  const url = `/chats/${chatId}/messages?${q.toString()}`;
-  const data = await request(url, { token });
-  return data;
+export function createDirectChat({ token, peerId }) {
+  return request("/chats", {
+    method: "POST",
+    token,
+    body: { type: "DIRECT", peerId },
+  });
 }
 
 export async function getAllChats(token) {
@@ -102,6 +93,13 @@ export async function getAllChats(token) {
 
 export function getChat({ chatId, token }) {
   return request(`/chats/${chatId}`, {
+    token,
+  });
+}
+
+export function markRead({ chatId, token }) {
+  return request(`/chats/${chatId}/read`, {
+    method: "PATCH",
     token,
   });
 }
@@ -192,6 +190,71 @@ export function demoteFromAdmin({ chatId, userId, token }) {
   });
 }
 
+// messages
+
+export async function getChatMessages({
+  chatId,
+  token,
+  limit = 30,
+  cursor,
+  direction = "older",
+}) {
+  const q = new URLSearchParams();
+  if (limit) q.set("limit", String(limit));
+  if (cursor != null) q.set("cursor", String(cursor));
+  if (direction) q.set("direction", direction);
+
+  const url = `/chats/${chatId}/messages?${q.toString()}`;
+  const data = await request(url, { token });
+  return data;
+}
+
+export function createMessage({
+  chatId,
+  token,
+  text,
+  imageUrl,
+  imagePublicId,
+}) {
+  const body = {};
+  if (typeof text === "string") body.text = text;
+  if (typeof imageUrl !== "undefined") body.imageUrl = imageUrl;
+  if (typeof imagePublicId !== "undefined") body.imagePublicId = imagePublicId;
+
+  return request(`/chats/${chatId}/messages`, {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+export function editMessage({
+  chatId,
+  messageId,
+  token,
+  text,
+  imageUrl,
+  imagePublicId,
+}) {
+  const body = {};
+  if (typeof text === "string") body.text = text;
+  if (typeof imageUrl !== "undefined") body.imageUrl = imageUrl;
+  if (typeof imagePublicId !== "undefined") body.imagePublicId = imagePublicId;
+
+  return request(`/chats/${chatId}/messages/${messageId}`, {
+    method: "PATCH",
+    token,
+    body,
+  });
+}
+
+export function deleteMessage({ chatId, messageId, token }) {
+  return request(`/chats/${chatId}/messages/${messageId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 // file management
 
 export async function upload(file) {
@@ -200,6 +263,7 @@ export async function upload(file) {
 
   const res = await fetch(`${BASE_URL}/upload`, {
     method: "POST",
+    token,
     body: formData,
   });
 
