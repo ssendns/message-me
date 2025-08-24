@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { getAllUsers, createGroup, editGroup } from "../services/api";
+import { getAllUsers, createGroup } from "../services/api";
 import AvatarPicker from "../components/avatar/AvatarPicker";
 import UserSelectList from "../components/group/UserSelectList";
 
