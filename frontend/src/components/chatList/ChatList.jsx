@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import useSocket from "../../hooks/useSocket";
 import useChatList from "../../hooks/useChatList";
 import ChatListItem from "./ChatListItem";
-import SOCKET_EVENTS from "../../services/socketEvents";
+import { createDirectChat } from "../../services/api";
 
 export default function ChatList({
   token,
@@ -17,7 +16,6 @@ export default function ChatList({
     currentChat,
     searchTerm
   );
-  const { socket } = useSocket();
   const [pendingPeerId, setPendingPeerId] = useState(null);
   const pendingTimerRef = useRef(null);
 
@@ -42,16 +40,15 @@ export default function ChatList({
   );
 
   const handleSelect = useCallback(
-    (item) => {
+    async (item) => {
       if (!item.isNew) {
         onSelect(item);
         markChatRead(item.id);
         return;
       }
 
-      if (!socket) return;
       const peerId = item.participants?.[0]?.id;
-      if (!peerId) return;
+      if (!peerId || !token) return;
 
       if (pendingPeerId && pendingPeerId === peerId) return;
       setPendingPeerId(peerId);
@@ -59,30 +56,29 @@ export default function ChatList({
       pendingTimerRef.current = setTimeout(() => {
         setPendingPeerId((curr) => (curr === peerId ? null : curr));
       }, 8000);
-      socket.once(
-        SOCKET_EVENTS.CHAT_READY,
-        ({ chatId, peerId: returnedPeerId }) => {
-          if (returnedPeerId !== peerId) return;
-          if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
-          setPendingPeerId(null);
+      try {
+        const { id: chatId } = await createDirectChat({ peerId, token });
+        if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+        setPendingPeerId(null);
 
-          onSelect({
-            id: chatId,
-            type: "DIRECT",
-            displayName: item.displayName,
-            participants: item.participants,
-            lastMessageText: "",
-            lastMessageImageUrl: null,
-            time: null,
-            unreadCount: 0,
-            hasUnread: false,
-          });
-        }
-      );
-
-      socket.emit(SOCKET_EVENTS.GET_OR_CREATE_CHAT, { peerId });
+        onSelect({
+          id: chatId,
+          type: "DIRECT",
+          displayName: item.displayName,
+          participants: item.participants,
+          lastMessageText: "",
+          lastMessageImageUrl: null,
+          time: null,
+          unreadCount: 0,
+          hasUnread: false,
+        });
+      } catch (err) {
+        console.error("failed to create/get direct chat:", err);
+        if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+        setPendingPeerId(null);
+      }
     },
-    [socket, onSelect, markChatRead, pendingPeerId]
+    [token, onSelect, markChatRead, pendingPeerId]
   );
 
   return (
