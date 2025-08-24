@@ -1,10 +1,12 @@
 const prisma = require("../../utils/prisma");
-const { ensureMember, privateKey } = require("../../utils/chatUtils");
+const { privateKey } = require("../../utils/chatUtils");
+const { markMessagesAsRead } = require("../../utils/messageUtils");
 const { createSystemMessage } = require("../../utils/systemMessage");
-const { emitToChat } = require("../../socket/hub");
+const { emitToChat, emitToChatAndUsers } = require("../../socket/hub");
+const { SOCKET_EVENTS } = require("../../socket/socketEvents");
 
 const getAllChats = async (req, res) => {
-  const userId = Number(req.user.userId);
+  const userId = Number(req.userId);
 
   try {
     const chats = await prisma.chat.findMany({
@@ -77,8 +79,8 @@ const getAllChats = async (req, res) => {
 
 const getChat = async (req, res) => {
   try {
-    const chatId = Number(req.params.chatId);
-    const userId = Number(req.user.userId);
+    const chatId = Number(req.chatId);
+    const userId = Number(req.userId);
 
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
@@ -148,7 +150,8 @@ const getChat = async (req, res) => {
 
 // body: { type: 'DIRECT'|'GROUP', peerId? (for direct), title? (for group), participantIds? (for group), avatarUrl?, avatarPublicId? (for group)}
 const createChat = async (req, res) => {
-  const userId = Number(req.user.userId);
+  const userId = Number(req.userId);
+  const userName = req.userName;
   const { type, peerId, title, participantIds, avatarUrl, avatarPublicId } =
     req.body || {};
 
@@ -201,39 +204,34 @@ const createChat = async (req, res) => {
         role: id === userId ? "OWNER" : "MEMBER",
       }));
 
-      const chat = await prisma.$transaction(async (tx) => {
-        const created = await tx.chat.create({
-          data: {
-            type: "GROUP",
-            title: title.trim(),
-            avatarUrl:
-              typeof avatarUrl === "undefined" ? null : avatarUrl || null,
-            avatarPublicId:
-              typeof avatarPublicId === "undefined"
-                ? null
-                : avatarPublicId || null,
-            participants: { create: participantsCreate },
-          },
-          select: { id: true, title: true },
-        });
+      const { created, systemMessage } = await prisma.$transaction(
+        async (tx) => {
+          const created = await tx.chat.create({
+            data: {
+              type: "GROUP",
+              title: title.trim(),
+              avatarUrl:
+                typeof avatarUrl === "undefined" ? null : avatarUrl || null,
+              avatarPublicId:
+                typeof avatarPublicId === "undefined"
+                  ? null
+                  : avatarPublicId || null,
+              participants: { create: participantsCreate },
+            },
+            select: { id: true, title: true },
+          });
 
-        const owner = await tx.user.findUnique({
-          where: { id: userId },
-          select: { username: true },
-        });
+          const systemMessage = await createSystemMessage(tx, {
+            chatId: created.id,
+            action: "group_created",
+            userId,
+            extra: { userName: userName, title: title.trim() },
+          });
+          return { created, systemMessage };
+        }
+      );
 
-        const systemMessage = await createSystemMessage(tx, {
-          chatId: created.id,
-          action: "group_created",
-          userId,
-          extra: { userName: owner?.username, title: title.trim() },
-        });
-
-        emitToChat(created.id, "receive_message", systemMessage);
-
-        return created;
-      });
-
+      emitToChat(created.id, SOCKET_EVENTS.RECEIVE_MESSAGE, systemMessage);
       return res.status(201).json({ id: chat.id });
     }
 
@@ -243,8 +241,18 @@ const createChat = async (req, res) => {
   }
 };
 
+const markRead = async (req, res) => {
+  const userId = Number(req.userId);
+  const chatId = Number(req.chatId);
+
+  const payload = await markMessagesAsRead(chatId, userId);
+  emitToChatAndUsers(chatId, userId, SOCKET_EVENTS.MESSAGES_READ, payload);
+  res.json({ ok: true });
+};
+
 module.exports = {
   getAllChats,
   getChat,
   createChat,
+  markRead,
 };
