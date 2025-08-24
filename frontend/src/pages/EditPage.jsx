@@ -11,7 +11,7 @@ import {
 import AvatarPicker from "../components/avatar/AvatarPicker";
 import { ArrowLeft } from "lucide-react";
 import { buildUserPayload, buildGroupPayload } from "../utils/editUtils";
-import UserSelectList from "../components/group//UserSelectList";
+import UserSelectList from "../components/group/UserSelectList";
 
 export default function EditPage() {
   const token = localStorage.getItem("token");
@@ -44,6 +44,7 @@ export default function EditPage() {
         if (isGroupMode) {
           setLoadingUsers(true);
           const res = await getChat({ token, chatId });
+          if (cancel) return;
           const chat = res?.chat;
           if (!chat) throw new Error("chat not found");
 
@@ -64,12 +65,17 @@ export default function EditPage() {
             (chat.participants || []).map((p) => Number(p.id))
           );
           setMemberIds(ids);
-          const list = await getAllUsers(token);
-          if (cancel) return;
-          const users = Array.isArray(list) ? list : list?.users || [];
-          setAllUsers(users);
+          try {
+            const list = await getAllUsers(token);
+            if (cancel) return;
+            const users = Array.isArray(list) ? list : list?.users || [];
+            setAllUsers(users);
+          } finally {
+            if (!cancel) setLoadingUsers(false);
+          }
         } else {
           const res = await getCurrentUser({ token });
+          if (cancel) return;
           const user = res?.user;
           if (!user) throw new Error("user not found");
 
@@ -94,7 +100,7 @@ export default function EditPage() {
         console.error(err);
       } finally {
         if (!cancel) setLoading(false);
-        if (!cancel) setLoadingUsers(false);
+        if (!cancel && isGroupMode) setLoadingUsers(false);
       }
     })();
     return () => {
@@ -149,6 +155,14 @@ export default function EditPage() {
                 }
               : null
           );
+          setAvatarDraft(
+            updated?.avatarUrl
+              ? {
+                  url: updated.avatarUrl,
+                  publicId: updated.avatarPublicId ?? null,
+                }
+              : null
+          );
         }
 
         if (selectedToAdd.size > 0) {
@@ -161,7 +175,7 @@ export default function EditPage() {
         }
 
         alert("group updated");
-        navigate("/");
+        navigate(-1);
       } else {
         const body = buildUserPayload({
           name,
@@ -170,7 +184,10 @@ export default function EditPage() {
           avatarDraft,
           initialAvatar,
         });
-        if (!Object.keys(body).length) return alert("nothing to update");
+        if (!Object.keys(body).length) {
+          alert("nothing to update");
+          return;
+        }
 
         const res = await editUser({ ...body, token });
         const user = res?.user || {};
@@ -182,14 +199,15 @@ export default function EditPage() {
         if (user.avatarUrl) localStorage.setItem("avatarUrl", user.avatarUrl);
         else localStorage.removeItem("avatarUrl");
 
-        setInitialAvatar(
-          user.avatarUrl
-            ? { url: user.avatarUrl, publicId: user.avatarPublicId ?? null }
-            : null
-        );
+        const next = user.avatarUrl
+          ? { url: user.avatarUrl, publicId: user.avatarPublicId ?? null }
+          : null;
+        setInitialAvatar(next);
+        setAvatarDraft(next);
+        setPassword("");
 
         alert("account updated");
-        navigate("/");
+        navigate(-1);
       }
     } catch (err) {
       console.error(err);
