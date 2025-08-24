@@ -15,8 +15,15 @@ export default function ParticipantItem({
   onPromote,
   onDemote,
   onRemove,
+  disabled = false,
 }) {
   const { rowRef, open, openUpwards, toggleMenu, closeMenu } = useMenu();
+
+  const handleClick = (fn) => {
+    if (disabled) return;
+    fn?.(p.id);
+    closeMenu();
+  };
 
   return (
     <div
@@ -52,7 +59,7 @@ export default function ParticipantItem({
         <div className="relative">
           <button
             type="button"
-            onClick={toggleMenu}
+            onClick={() => !disabled && toggleMenu()}
             onMouseDown={(e) => e.stopPropagation()}
             className="p-1.5 rounded hover:bg-gray-100"
             aria-haspopup="menu"
@@ -67,18 +74,9 @@ export default function ParticipantItem({
               canPromote={canPromote}
               canDemote={canDemote}
               canRemove={canRemove}
-              onPromote={() => {
-                onPromote?.(p.id);
-                closeMenu();
-              }}
-              onDemote={() => {
-                onDemote?.(p.id);
-                closeMenu();
-              }}
-              onRemove={() => {
-                onRemove?.(p.id);
-                closeMenu();
-              }}
+              onPromote={() => handleClick(onPromote)}
+              onDemote={() => handleClick(onDemote)}
+              onRemove={() => handleClick(onRemove)}
               openUpwards={openUpwards}
             />
           )}

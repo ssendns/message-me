@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   removeParticipantFromChat,
   promoteToAdmin,
@@ -17,10 +17,24 @@ export default function GroupInfoDrawer({
   currentUserId,
   currentUserRole = "MEMBER",
   onEdit,
+  onAfterLeave,
+  onAfterDelete,
 }) {
   const token = localStorage.getItem("token");
   const [localParticipants, setLocalParticipants] = useState(
     chat.participants || []
+  );
+  useEffect(() => {
+    setLocalParticipants(chat.participants || []);
+  }, [chat.participants]);
+
+  const [pendingMap, setPendingMap] = useState({});
+  const setPending = (userId, v) =>
+    setPendingMap((m) => ({ ...m, [userId]: v }));
+
+  const memberCount = useMemo(
+    () => (Array.isArray(localParticipants) ? localParticipants.length : 0),
+    [localParticipants]
   );
 
   const refreshRole = (userId, role) => {
@@ -28,21 +42,71 @@ export default function GroupInfoDrawer({
       prev.map((p) => (p.id === userId ? { ...p, role } : p))
     );
   };
+
   const removeLocal = (userId) => {
     setLocalParticipants((prev) => prev.filter((p) => p.id !== userId));
   };
 
   const handlePromote = async (userId) => {
-    await promoteToAdmin({ chatId: chat.id, userId, token });
+    const prev = localParticipants.find((p) => p.id === userId)?.role;
     refreshRole(userId, "ADMIN");
+    setPending(userId, true);
+    try {
+      await promoteToAdmin({ chatId: chat.id, userId, token });
+    } catch (err) {
+      if (prev) refreshRole(userId, prev);
+      alert(err.message || "failed to promote");
+    } finally {
+      setPending(userId, false);
+    }
   };
+
   const handleDemote = async (userId) => {
-    await demoteFromAdmin({ chatId: chat.id, userId, token });
+    const prev = localParticipants.find((p) => p.id === userId)?.role;
     refreshRole(userId, "MEMBER");
+    setPending(userId, true);
+    try {
+      await demoteFromAdmin({ chatId: chat.id, userId, token });
+    } catch (err) {
+      if (prev) refreshRole(userId, prev);
+      alert(err.message || "failed to demote");
+    } finally {
+      setPending(userId, false);
+    }
   };
+
   const handleRemove = async (userId) => {
-    await removeParticipantFromChat({ chatId: chat.id, userId, token });
+    const prev = localParticipants;
     removeLocal(userId);
+    setPending(userId, true);
+    try {
+      await removeParticipantFromChat({ chatId: chat.id, userId, token });
+    } catch (err) {
+      setLocalParticipants(prev);
+      alert(err.message || "failed to remove member");
+    } finally {
+      setPending(userId, false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteGroup({ chatId: chat.id, token });
+      if (onAfterDelete) onAfterDelete();
+      else window.location.href = "/";
+    } catch (err) {
+      alert(err.message || "failed to delete chat");
+    }
+  };
+
+  const handleLeave = async () => {
+    try {
+      await leaveGroup({ chatId: chat.id, token });
+      if (onAfterLeave) onAfterLeave();
+      else window.location.href = "/";
+    } catch (err) {
+      alert(err.message || "failed to leave chat");
+    }
   };
 
   return (
@@ -97,6 +161,7 @@ export default function GroupInfoDrawer({
               onPromote={handlePromote}
               onDemote={handleDemote}
               onRemove={handleRemove}
+              disabled={!!pendingMap[p.id]}
             />
           );
         })}
@@ -105,30 +170,14 @@ export default function GroupInfoDrawer({
       <div className="mt-auto p-4 border-t">
         {currentUserRole === "OWNER" ? (
           <button
-            onClick={async () => {
-              try {
-                const token = localStorage.getItem("token");
-                await deleteGroup({ chatId: chat.id, token });
-                window.location.href = "/";
-              } catch (err) {
-                alert(err.message || "failed to delete chat");
-              }
-            }}
+            onClick={handleDelete}
             className="w-full py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
           >
             delete chat
           </button>
         ) : (
           <button
-            onClick={async () => {
-              try {
-                const token = localStorage.getItem("token");
-                await leaveGroup({ chatId: chat.id, token });
-                window.location.href = "/";
-              } catch (err) {
-                alert(err.message || "failed to leave chat");
-              }
-            }}
+            onClick={handleLeave}
             className="w-full py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
           >
             leave chat
