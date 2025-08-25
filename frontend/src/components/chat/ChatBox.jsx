@@ -15,7 +15,6 @@ const BOTTOM_PX = 64;
 
 export default function ChatBox({
   messages,
-  currentUserId,
   participants = [],
   isGroup = false,
   hasMore = false,
@@ -145,7 +144,6 @@ export default function ChatBox({
                 key={`${it.id}-${it.updatedAt ?? it.createdAt ?? ""}`}
                 item={it}
                 prev={list[idx - 1]}
-                currentUserId={currentUserId}
                 isGroup={isGroup}
                 nameById={nameById}
                 setMsgRef={setMsgRef}
