@@ -5,9 +5,10 @@ const { emitToChatAndUsers } = require("../../socket/hub");
 const { SOCKET_EVENTS } = require("../../socket/socketEvents");
 
 const deleteGroup = async (req, res) => {
+  const userId = Number(req.userId);
   const chatId = Number(req.chatId);
   try {
-    emitToChatAndUsers(chatId, SOCKET_EVENTS.CHAT_DELETED, { chatId });
+    emitToChatAndUsers(chatId, userId, SOCKET_EVENTS.CHAT_DELETED, { chatId });
     await prisma.chat.delete({ where: { id: chatId } });
     res.json({ ok: true });
   } catch (err) {
@@ -20,7 +21,8 @@ const editGroup = async (req, res) => {
     const userId = Number(req.userId);
     const chatId = Number(req.chatId);
     const userName = req.userName;
-    const { newTitle, avatarUrl, avatarPublicId } = req.body || {};
+    const body = req.body ?? {};
+    const { newTitle, avatarUrl, avatarPublicId } = body;
 
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
@@ -36,11 +38,11 @@ const editGroup = async (req, res) => {
       if (title !== chat.title) dataToUpdate.title = title;
     }
     const hasAvatarUrl = Object.prototype.hasOwnProperty.call(
-      req.body,
+      body,
       "avatarUrl"
     );
     const hasAvatarPid = Object.prototype.hasOwnProperty.call(
-      req.body,
+      body,
       "avatarPublicId"
     );
 
@@ -142,7 +144,12 @@ const leaveGroup = async (req, res) => {
       return systemMessage;
     });
 
-    emitToChatAndUsers(chatId, SOCKET_EVENTS.RECEIVE_MESSAGE, systemMessage);
+    emitToChatAndUsers(
+      chatId,
+      userId,
+      SOCKET_EVENTS.RECEIVE_MESSAGE,
+      systemMessage
+    );
     return res.json({ ok: true });
   } catch (err) {
     console.error("leaveChat failed:", err);
