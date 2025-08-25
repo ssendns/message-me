@@ -2,17 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import useChatList from "../../hooks/useChatList";
 import ChatListItem from "./ChatListItem";
 import { createDirectChat } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
-export default function ChatList({
-  token,
-  currentUserId,
-  currentChat,
-  onSelect,
-  searchTerm,
-}) {
+export default function ChatList({ currentChat, onSelect, searchTerm }) {
+  const { token, user } = useAuth();
+  const currentUserId = user?.id;
+
   const { chats, onlineUserIds, markChatRead } = useChatList(
-    token,
-    currentUserId,
     currentChat,
     searchTerm
   );
@@ -87,7 +83,6 @@ export default function ChatList({
         <ChatListItem
           key={it.id}
           chat={it}
-          currentUserId={currentUserId}
           isActive={String(it.id) === String(currentChat?.id)}
           isOnline={isChatOnline(it)}
           onClick={() => handleSelect(it)}
