@@ -11,7 +11,6 @@ import GroupInfoDrawer from "../group/GroupInfoDrawer";
 export default function ChatArea({
   displayName,
   chatId,
-  currentUserId,
   currentUserRole,
   participants,
   type,
@@ -39,7 +38,6 @@ export default function ChatArea({
   const { messages, loadingOlder, hasMore, loadOlder, firstUnreadId } =
     useChatMessages({
       chatId,
-      currentUserId,
     });
   const { sendMessage } = useMessage();
   const { uploadImage, loading, error } = useUploadImage();
@@ -147,7 +145,6 @@ export default function ChatArea({
       <div className="flex-1 overflow-y-auto px-6 bg-gray-50">
         <ChatBox
           messages={messages}
-          currentUserId={currentUserId}
           participants={participants}
           isGroup={String(type).toUpperCase() === "GROUP"}
           hasMore={hasMore}
@@ -218,7 +215,6 @@ export default function ChatArea({
           }}
           currentUserRole={currentUserRole}
           membersCount={membersCount}
-          currentUserId={currentUserId}
           onEdit={handleEditGroup}
         />
       )}
