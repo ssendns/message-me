@@ -44,6 +44,7 @@ router.post(
   parseTargetId,
   ensureTargetUserExists,
   ensureTargetMember,
+  ensureTargetNotOwner,
   participantController.promoteToAdmin
 );
 router.post(
