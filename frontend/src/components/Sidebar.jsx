@@ -1,10 +1,8 @@
-export default function Sidebar({
-  username,
-  onLogout,
-  onEdit,
-  onCreate,
-  isOpen,
-}) {
+import { useAuth } from "../context/AuthContext";
+
+export default function Sidebar({ onLogout, onEdit, onCreate, isOpen }) {
+  const { user } = useAuth();
+  const username = user?.username;
   return (
     <aside
       className={`bg-white shadow-md p-4 flex flex-col fixed top-0 left-0 h-full z-30 transition-transform duration-300 ${
