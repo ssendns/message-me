@@ -29,7 +29,7 @@ describe("participants routes", () => {
     await prisma.user.deleteMany({ where: { username: "owner" } });
     await prisma.user.deleteMany({ where: { username: "member" } });
     await prisma.user.deleteMany({ where: { username: "outsider" } });
-    await prisma.chat.deleteMany({ where: { chatId: chatId } });
+    await prisma.chat.deleteMany({ where: { id: chatId } });
 
     ({ user: owner, token: tokenOwner } = await createAndLogin("owner", "123"));
     ({ user: member, token: tokenMember } = await createAndLogin(
@@ -209,6 +209,10 @@ describe("participants routes", () => {
   });
 
   afterAll(async () => {
+    await prisma.user.deleteMany({ where: { username: "owner" } });
+    await prisma.user.deleteMany({ where: { username: "member" } });
+    await prisma.user.deleteMany({ where: { username: "outsider" } });
+    await prisma.chat.deleteMany({ where: { id: chatId } });
     await prisma.$disconnect();
   });
 });

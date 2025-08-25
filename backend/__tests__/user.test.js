@@ -12,6 +12,8 @@ async function createAndLogin(username, password = "123") {
 describe("user routes", () => {
   let user1, token1, user2, token2;
   beforeAll(async () => {
+    await prisma.user.deleteMany({ where: { username: "user1" } });
+    await prisma.user.deleteMany({ where: { username: "user2" } });
     ({ user: user1, token: token1 } = await createAndLogin("user1", "123"));
     ({ user: user2, token: token2 } = await createAndLogin("user2", "456"));
   });
@@ -163,6 +165,8 @@ describe("user routes", () => {
   });
 
   afterAll(async () => {
+    await prisma.user.deleteMany({ where: { username: "user1" } });
+    await prisma.user.deleteMany({ where: { username: "user2" } });
     await prisma.$disconnect();
   });
 });

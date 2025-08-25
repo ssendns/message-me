@@ -213,6 +213,10 @@ describe("group chat routes", () => {
   });
 
   afterAll(async () => {
+    await prisma.user.deleteMany({ where: { username: "owner" } });
+    await prisma.user.deleteMany({ where: { username: "admin" } });
+    await prisma.user.deleteMany({ where: { username: "member" } });
+    await prisma.chat.deleteMany({ where: { title: "test" } });
     await prisma.$disconnect();
   });
 });

@@ -24,7 +24,7 @@ describe("chat routes (DIRECT only; GROUP tested separately)", () => {
   beforeAll(async () => {
     await prisma.user.deleteMany({ where: { username: "user1" } });
     await prisma.user.deleteMany({ where: { username: "user2" } });
-    await prisma.chat.deleteMany({ where: { chatId: chatId } });
+    await prisma.chat.deleteMany({ where: { id: chatId } });
 
     ({ user: user1, token: token1 } = await createAndLogin("user1", "123"));
     ({ user: user2, token: token2 } = await createAndLogin("user2", "456"));
@@ -161,6 +161,9 @@ describe("chat routes (DIRECT only; GROUP tested separately)", () => {
   });
 
   afterAll(async () => {
+    await prisma.user.deleteMany({ where: { username: "user1" } });
+    await prisma.user.deleteMany({ where: { username: "user2" } });
+    await prisma.chat.deleteMany({ where: { id: chatId } });
     await prisma.$disconnect();
   });
 });
