@@ -12,10 +12,11 @@ import AvatarPicker from "../components/avatar/AvatarPicker";
 import { ArrowLeft } from "lucide-react";
 import { buildUserPayload, buildGroupPayload } from "../utils/editUtils";
 import UserSelectList from "../components/group/UserSelectList";
+import { useAuth } from "../context/AuthContext";
 
 export default function EditPage() {
-  const token = localStorage.getItem("token");
-  const currentUserId = Number(localStorage.getItem("id"));
+  const { token, user: authUser, updateUser } = useAuth();
+  const currentUserId = authUser?.id;
   const navigate = useNavigate();
   const { chatId } = useParams();
   const isGroupMode = Boolean(chatId);
@@ -91,10 +92,6 @@ export default function EditPage() {
             : null;
           setInitialAvatar(init);
           setAvatarDraft(init);
-
-          localStorage.setItem("username", username);
-          if (avatarUrl) localStorage.setItem("avatarUrl", avatarUrl);
-          else localStorage.removeItem("avatarUrl");
         }
       } catch (err) {
         console.error(err);
@@ -192,19 +189,24 @@ export default function EditPage() {
         const res = await editUser({ ...body, token });
         const user = res?.user || {};
 
-        if (user.username) {
-          initialNameRef.current = user.username;
-          localStorage.setItem("username", user.username);
+        if (updated.username) {
+          initialNameRef.current = updated.username;
         }
-        if (user.avatarUrl) localStorage.setItem("avatarUrl", user.avatarUrl);
-        else localStorage.removeItem("avatarUrl");
 
-        const next = user.avatarUrl
-          ? { url: user.avatarUrl, publicId: user.avatarPublicId ?? null }
+        const next = updated.avatarUrl
+          ? {
+              url: updated.avatarUrl,
+              publicId: updated.avatarPublicId ?? null,
+            }
           : null;
         setInitialAvatar(next);
         setAvatarDraft(next);
         setPassword("");
+
+        updateUser({
+          username: updated.username ?? undefined,
+          avatarUrl: updated.avatarUrl ?? null,
+        });
 
         alert("account updated");
         navigate(-1);
