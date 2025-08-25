@@ -42,8 +42,9 @@ const getUserByUsername = async (req, res) => {
   if (!user) {
     return res.status(404).json({ error: "user not found" });
   }
-
-  res.json(user);
+  res.status(200).json({
+    user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl },
+  });
 };
 
 const editUser = async (req, res) => {
