@@ -1,14 +1,17 @@
 import Avatar from "../avatar/Avatar";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ChatListItem({
   chat,
-  currentUserId,
   isActive,
   isOnline,
   onClick,
   waiting = false,
 }) {
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+
   const {
     id,
     isGroup,
