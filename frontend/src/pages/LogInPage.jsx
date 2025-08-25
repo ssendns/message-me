@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { logIn } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function LogInPage() {
   const [username, setUsername] = useState("");
@@ -8,17 +9,14 @@ export default function LogInPage() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const { user } = await logIn({ username, password });
-
-      localStorage.setItem("token", user.token);
-      localStorage.setItem("username", user.username);
-      localStorage.setItem("id", String(user.id));
-
+      login({ token: user.token, user });
       navigate("/");
     } catch (err) {
       console.error("login failed:", err);

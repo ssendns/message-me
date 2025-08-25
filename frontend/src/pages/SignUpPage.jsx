@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signUp } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function SignUpPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,11 +16,7 @@ export default function SignUpPage() {
 
     try {
       const { user } = await signUp({ username, password });
-
-      localStorage.setItem("token", user.token);
-      localStorage.setItem("username", user.username);
-      localStorage.setItem("id", String(user.id));
-
+      login({ token: user.token, user });
       navigate("/");
     } catch (err) {
       console.error("signup failed:", err);
