@@ -31,6 +31,9 @@ async function ensureUserExists(req, res, next) {
     where: { id: userId },
     select: { id: true, username: true },
   });
+  if (!user) {
+    return res.status(401).json({ error: "invalid or expired token" });
+  }
 
   req.userName = user.username;
   next();
