@@ -1,6 +1,6 @@
 const request = require("supertest");
-const app = require("../src/app");
-const prisma = require("../src/utils/db");
+const app = require("../src/api/app");
+const prisma = require("../src/utils/prisma");
 
 let token;
 
