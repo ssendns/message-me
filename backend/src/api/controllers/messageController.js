@@ -130,8 +130,8 @@ const updateMessage = async (req, res) => {
 };
 
 const deleteMessage = async (req, res) => {
-  const userId = Number(req.user.userId);
-  const chatId = Number(req.params.chatId);
+  const userId = Number(req.userId);
+  const chatId = Number(req.chatId);
   const messageId = Number(req.messageId);
 
   try {
