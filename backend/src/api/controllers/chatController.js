@@ -204,34 +204,32 @@ const createChat = async (req, res) => {
         role: id === userId ? "OWNER" : "MEMBER",
       }));
 
-      const { created, systemMessage } = await prisma.$transaction(
-        async (tx) => {
-          const created = await tx.chat.create({
-            data: {
-              type: "GROUP",
-              title: title.trim(),
-              avatarUrl:
-                typeof avatarUrl === "undefined" ? null : avatarUrl || null,
-              avatarPublicId:
-                typeof avatarPublicId === "undefined"
-                  ? null
-                  : avatarPublicId || null,
-              participants: { create: participantsCreate },
-            },
-            select: { id: true, title: true },
-          });
+      const { chat, systemMessage } = await prisma.$transaction(async (tx) => {
+        const chat = await tx.chat.create({
+          data: {
+            type: "GROUP",
+            title: title.trim(),
+            avatarUrl:
+              typeof avatarUrl === "undefined" ? null : avatarUrl || null,
+            avatarPublicId:
+              typeof avatarPublicId === "undefined"
+                ? null
+                : avatarPublicId || null,
+            participants: { create: participantsCreate },
+          },
+          select: { id: true, title: true },
+        });
 
-          const systemMessage = await createSystemMessage(tx, {
-            chatId: created.id,
-            action: "group_created",
-            userId,
-            extra: { userName: userName, title: title.trim() },
-          });
-          return { created, systemMessage };
-        }
-      );
+        const systemMessage = await createSystemMessage(tx, {
+          chatId: chat.id,
+          action: "group_created",
+          userId,
+          extra: { userName: userName, title: title.trim() },
+        });
+        return { chat, systemMessage };
+      });
 
-      emitToChat(created.id, SOCKET_EVENTS.RECEIVE_MESSAGE, systemMessage);
+      emitToChat(chat.id, SOCKET_EVENTS.RECEIVE_MESSAGE, systemMessage);
       return res.status(201).json({ id: chat.id });
     }
 
