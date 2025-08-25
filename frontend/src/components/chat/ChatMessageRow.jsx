@@ -2,6 +2,7 @@ import Message from "../message/Message";
 import { DateLabel, formatDate } from "../../utils/chatUtils";
 import SystemMessage from "./SystemMessage";
 import { systemText } from "../../utils/systemMessageClient";
+import { useAuth } from "../../context/AuthContext";
 
 function participantsFromMap(nameById) {
   const arr = [];
@@ -14,11 +15,13 @@ function participantsFromMap(nameById) {
 export default function ChatMessageRow({
   item,
   prev,
-  currentUserId,
   isGroup,
   nameById,
   setMsgRef,
 }) {
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+
   const dateLabel = item.createdAt ? formatDate(item.createdAt) : null;
 
   let showDate = false;
@@ -52,11 +55,7 @@ export default function ChatMessageRow({
   return (
     <div key={key} ref={setMsgRef(item.id)}>
       {showDate && <DateLabel date={dateLabel} />}
-      <Message
-        message={item}
-        currentUserId={currentUserId}
-        authorName={authorName}
-      />
+      <Message message={item} authorName={authorName} />
     </div>
   );
 }
