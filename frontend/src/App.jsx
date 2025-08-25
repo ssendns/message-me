@@ -1,10 +1,10 @@
-import SocketProvider from "./context/SocketProvider";
+import { AuthProvider } from "./context/AuthContext";
 import RouterWrapper from "./RouterWrapper";
 
 export default function App() {
   return (
-    <SocketProvider>
+    <AuthProvider>
       <RouterWrapper />
-    </SocketProvider>
+    </AuthProvider>
   );
 }
