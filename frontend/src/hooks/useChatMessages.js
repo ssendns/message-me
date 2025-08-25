@@ -2,9 +2,13 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { getChatMessages, markRead } from "../services/api";
 import useSocket from "./useSocket";
 import SOCKET_EVENTS from "../services/socketEvents";
+import { useAuth } from "../context/AuthContext";
 const PAGE = 30;
 
-export default function useChatMessages({ chatId, currentUserId }) {
+export default function useChatMessages({ chatId }) {
+  const { token, user } = useAuth();
+  const currentUserId = user?.id;
+
   const [messages, setMessages] = useState([]);
   const [firstUnreadId, setFirstUnreadId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
@@ -13,7 +17,6 @@ export default function useChatMessages({ chatId, currentUserId }) {
   const oldestCursorRef = useRef(null);
   const joinedChatRef = useRef(null);
   const { socket } = useSocket();
-  const token = localStorage.getItem("token");
 
   useEffect(() => {
     if (!chatId || !token) return;
