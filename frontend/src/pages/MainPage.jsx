@@ -3,26 +3,22 @@ import { useNavigate } from "react-router-dom";
 import ChatList from "../components/chatList/ChatList";
 import ChatArea from "../components/chat/ChatArea";
 import Sidebar from "../components/Sidebar";
-import WelcomeModal from "../components/WelcomeModal";
 import useSocket from "../hooks/useSocket";
 import SOCKET_EVENTS from "../services/socketEvents";
+import { useAuth } from "../context/AuthContext";
 
 export default function MainPage() {
   const navigate = useNavigate();
   const { socket, isReady } = useSocket();
 
-  const token = useMemo(() => localStorage.getItem("token") || "", []);
-  const username = useMemo(() => localStorage.getItem("username") || "", []);
-  const currentUserId = useMemo(
-    () => Number(localStorage.getItem("id")) || 0,
-    []
-  );
+  const { token, user } = useAuth();
+  const currentUserId = user?.id;
+  const username = user?.username;
 
   const [selectedChat, setSelectedChat] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showWelcome, setShowWelcome] = useState(false);
   const sidebarRef = useRef(null);
 
   const toggleSidebar = useCallback(() => setSidebarOpen((s) => !s), []);
@@ -40,16 +36,6 @@ export default function MainPage() {
     navigate("/log-in");
   }, [navigate, socket]);
 
-  const handleWelcomeConfirm = () => {
-    localStorage.setItem("alreadyVisited", "true");
-    setShowWelcome(false);
-    window.location.reload();
-  };
-
-  useEffect(() => {
-    if (!token) navigate("/log-in");
-  }, [navigate, token]);
-
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
@@ -66,10 +52,6 @@ export default function MainPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sidebarOpen, closeSidebar]);
-
-  useEffect(() => {
-    if (!localStorage.getItem("alreadyVisited")) setShowWelcome(true);
-  }, []);
 
   useEffect(() => {
     if (!socket || !currentUserId) return;
@@ -93,9 +75,6 @@ export default function MainPage() {
 
   return (
     <>
-      {showWelcome && (
-        <WelcomeModal username={username} onContinue={handleWelcomeConfirm} />
-      )}
       <main className="flex h-screen font-poppins bg-background text-foreground overflow-hidden">
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-40 z-20" />
@@ -136,7 +115,6 @@ export default function MainPage() {
             <div className="flex-1 overflow-y-auto px-2 py-2">
               <ChatList
                 token={token}
-                currentUserId={currentUserId}
                 currentChat={selectedChat}
                 onSelect={handleChatSelect}
                 searchTerm={searchTerm}
@@ -153,7 +131,6 @@ export default function MainPage() {
               <ChatArea
                 chatId={selectedChat.id}
                 displayName={selectedChat.displayName}
-                currentUserId={currentUserId}
                 currentUserRole={selectedChat.currentUserRole}
                 participants={selectedChat.participants}
                 type={selectedChat.type}
