@@ -7,6 +7,7 @@ import {
   deleteGroup,
 } from "../../services/api";
 import ParticipantItem from "./ParticipantItem";
+import { useAuth } from "../../context/AuthContext";
 
 const canEditGroup = (r) => r === "OWNER" || r === "ADMIN";
 
@@ -14,13 +15,13 @@ export default function GroupInfoDrawer({
   open,
   chat,
   membersCount,
-  currentUserId,
   currentUserRole = "MEMBER",
   onEdit,
   onAfterLeave,
   onAfterDelete,
 }) {
-  const token = localStorage.getItem("token");
+  const { token, user } = useAuth();
+  const currentUserId = user?.id;
   const [localParticipants, setLocalParticipants] = useState(
     chat.participants || []
   );
