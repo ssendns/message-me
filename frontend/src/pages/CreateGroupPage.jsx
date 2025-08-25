@@ -4,10 +4,11 @@ import { ArrowLeft } from "lucide-react";
 import { getAllUsers, createGroup } from "../services/api";
 import AvatarPicker from "../components/avatar/AvatarPicker";
 import UserSelectList from "../components/group/UserSelectList";
+import { useAuth } from "../context/AuthContext";
 
 export default function CreateGroupPage() {
-  const token = localStorage.getItem("token");
-  const currentUserId = Number(localStorage.getItem("id"));
+  const { token, user } = useAuth();
+  const currentUserId = user?.id;
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
