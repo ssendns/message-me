@@ -4,13 +4,12 @@ import useSocket from "../hooks/useSocket";
 import { sortByTimeDesc, mapApiChat } from "../utils/chatUtils";
 import SOCKET_EVENTS from "../services/socketEvents";
 import { systemPreview } from "../utils/systemMessageClient";
+import { useAuth } from "../context/AuthContext";
 
-export default function useChatList(
-  token,
-  currentUserId,
-  currentChat,
-  searchTerm
-) {
+export default function useChatList(currentChat, searchTerm) {
+  const { token, user } = useAuth();
+  const currentUserId = user?.id;
+
   const [chats, setChats] = useState([]);
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [onlineUserIds, setOnlineUserIds] = useState([]);
