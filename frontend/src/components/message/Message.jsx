@@ -37,7 +37,7 @@ export default function Message({ message, currentUserId, authorName = null }) {
   const handleDelete = useCallback(async () => {
     try {
       setSaving(true);
-      await deleteMessage({ id: message.id, chatId: message.chatId });
+      await deleteMessage({ messageId: message.id, chatId: message.chatId });
     } finally {
       setSaving(false);
     }
@@ -75,11 +75,11 @@ export default function Message({ message, currentUserId, authorName = null }) {
     try {
       setSaving(true);
       await editMessage({
-        id: message.id,
+        messageId: message.id,
         chatId: message.chatId,
-        newText: editText,
-        newImageUrl: editImageUrl,
-        newImagePublicId: editImagePublicId,
+        text: editText,
+        imageUrl: editImageUrl,
+        imagePublicId: editImagePublicId,
       });
       setIsEditing(false);
     } finally {
