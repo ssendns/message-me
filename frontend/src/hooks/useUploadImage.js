@@ -15,6 +15,7 @@ export default function useUploadImage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const abortRef = useRef(null);
+  const token = localStorage.getItem("token");
 
   const clearError = () => setError("");
 
@@ -52,7 +53,7 @@ export default function useUploadImage({
 
     const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
     try {
-      return await upload(file);
+      return await upload({ file, token });
     } catch (err) {
       if (err.name === "AbortError") {
         setError(
