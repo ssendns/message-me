@@ -151,28 +151,10 @@ export default function useChatMessages({ chatId, currentUserId }) {
   useEffect(() => {
     if (!socket || !chatId) return;
 
-    const handleEditedMessage = (payload) => {
-      const {
-        id,
-        chatId: cid,
-        text,
-        imageUrl,
-        imagePublicId,
-        edited,
-      } = payload;
-      if (String(cid) !== String(chatId)) return;
+    const handleEditedMessage = (updated) => {
+      if (String(updated.chatId) !== String(chatId)) return;
       setMessages((prev) =>
-        prev.map((message) =>
-          message.id === id
-            ? {
-                ...message,
-                text,
-                imageUrl,
-                imagePublicId,
-                edited: Boolean(edited),
-              }
-            : message
-        )
+        prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
       );
     };
 
