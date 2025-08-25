@@ -6,8 +6,12 @@ import useMenu from "../../hooks/useMenu";
 import useUploadImage from "../../hooks/useUploadImage";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 import useMessage from "../../hooks/useMessage";
+import { useAuth } from "../../context/AuthContext";
 
-export default function Message({ message, currentUserId, authorName = null }) {
+export default function Message({ message, authorName = null }) {
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+
   const isOwn = message.fromId === currentUserId;
 
   const [isEditing, setIsEditing] = useState(false);
