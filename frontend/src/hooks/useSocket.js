@@ -1,11 +1,5 @@
-import { useContext } from "react";
-import SocketContext from "../context/SocketContext";
-
+import { useAuth } from "../context/AuthContext";
 export default function useSocket() {
-  const context = useContext(SocketContext);
-  if (!context) {
-    throw new Error("useSocket must be used within a SocketProvider");
-  }
-
-  return context;
+  const { socket, isReady } = useAuth();
+  return { socket, isReady };
 }
