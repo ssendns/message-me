@@ -257,13 +257,15 @@ export function deleteMessage({ chatId, messageId, token }) {
 
 // file management
 
-export async function upload(file) {
+export async function upload({ file, token }) {
   const formData = new FormData();
   formData.append("file", file);
 
   const res = await fetch(`${BASE_URL}/upload`, {
     method: "POST",
-    token,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     body: formData,
   });
 
