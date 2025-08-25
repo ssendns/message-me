@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { upload } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 const DEFAULTS = {
   maxSizeMB: 10,
@@ -15,7 +16,7 @@ export default function useUploadImage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const abortRef = useRef(null);
-  const token = localStorage.getItem("token");
+  const { token } = useAuth();
 
   const clearError = () => setError("");
 
