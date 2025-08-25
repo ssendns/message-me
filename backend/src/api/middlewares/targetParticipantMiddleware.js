@@ -20,6 +20,9 @@ async function ensureTargetUserExists(req, res, next) {
     where: { id: targetId },
     select: { id: true, username: true },
   });
+  if (!targetUser) {
+    return res.status(404).json({ error: "target user not found" });
+  }
 
   req.targetName = targetUser.username;
   next();
