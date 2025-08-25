@@ -3,9 +3,10 @@ import {
   editMessage as apiEditMessage,
   deleteMessage as apiDeleteMessage,
 } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function useMessage() {
-  const token = localStorage.getItem("token");
+  const { token } = useAuth();
 
   const sendMessage = async ({ chatId, text, imageUrl, imagePublicId }) => {
     if (!token) return;
