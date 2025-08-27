@@ -189,14 +189,14 @@ export default function EditPage() {
         const res = await editUser({ ...body, token });
         const user = res?.user || {};
 
-        if (updated.username) {
-          initialNameRef.current = updated.username;
+        if (user.username) {
+          initialNameRef.current = user.username;
         }
 
-        const next = updated.avatarUrl
+        const next = user.avatarUrl
           ? {
-              url: updated.avatarUrl,
-              publicId: updated.avatarPublicId ?? null,
+              url: user.avatarUrl,
+              publicId: user.avatarPublicId ?? null,
             }
           : null;
         setInitialAvatar(next);
@@ -204,8 +204,8 @@ export default function EditPage() {
         setPassword("");
 
         updateUser({
-          username: updated.username ?? undefined,
-          avatarUrl: updated.avatarUrl ?? null,
+          username: user.username ?? undefined,
+          avatarUrl: user.avatarUrl ?? null,
         });
 
         alert("account updated");
