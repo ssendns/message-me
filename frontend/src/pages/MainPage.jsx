@@ -3,15 +3,13 @@ import { useNavigate } from "react-router-dom";
 import ChatList from "../components/chatList/ChatList";
 import ChatArea from "../components/chat/ChatArea";
 import Sidebar from "../components/Sidebar";
-import useSocket from "../hooks/useSocket";
 import SOCKET_EVENTS from "../services/socketEvents";
 import { useAuth } from "../context/AuthContext";
 
 export default function MainPage() {
   const navigate = useNavigate();
-  const { socket, isReady } = useSocket();
 
-  const { token, user } = useAuth();
+  const { token, user, hydrated, socket, logout } = useAuth();
   const currentUserId = user?.id;
   const username = user?.username;
 
@@ -28,13 +26,14 @@ export default function MainPage() {
   const handleEdit = () => navigate("/edit");
   const handleCreate = () => navigate("/create");
 
+  useEffect(() => {
+    if (hydrated && !token) navigate("/log-in");
+  }, [navigate, hydrated, token]);
+
   const handleLogout = useCallback(() => {
-    localStorage.clear();
-    try {
-      socket?.disconnect();
-    } catch {}
+    logout();
     navigate("/log-in");
-  }, [navigate, socket]);
+  }, [logout, navigate]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -65,7 +64,7 @@ export default function MainPage() {
     return () => socket.off("connect", join);
   }, [socket, currentUserId]);
 
-  if (token && !isReady) {
+  if (!hydrated) {
     return (
       <div className="flex justify-center items-center h-screen">
         <p className="text-muted text-lg animate-pulse">loading…</p>

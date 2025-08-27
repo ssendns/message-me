@@ -11,23 +11,30 @@ import { io } from "socket.io-client";
 import SOCKET_EVENTS from "../services/socketEvents";
 
 const SOCKET_URL = "http://localhost:3000";
-const LS_TOKEN = "token";
-const LS_ID = "id";
-const LS_USERNAME = "username";
-const LS_AVATAR = "avatarUrl";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setTokenState] = useState(null);
-  const [user, setUser] = useState({
-    id: null,
-    username: null,
-    avatarUrl: null,
+  const [token, setTokenState] = useState(() =>
+    typeof window !== "undefined" ? localStorage.getItem("token") : null
+  );
+  const [user, setUser] = useState(() => {
+    if (typeof window === "undefined")
+      return { id: null, username: null, avatarUrl: null };
+    const id = localStorage.getItem("id");
+    return {
+      id: id ? Number(id) : null,
+      username: localStorage.getItem("username") || null,
+      avatarUrl: localStorage.getItem("avatarUrl") || null,
+    };
   });
+
   const [socket, setSocket] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const connectingRef = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => setHydrated(true), []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -174,6 +181,7 @@ export function AuthProvider({ children }) {
       token,
       user,
       socket,
+      hydrated,
       isReady,
       isAuthenticated: Boolean(token && user?.id),
       setToken,
@@ -181,7 +189,17 @@ export function AuthProvider({ children }) {
       login,
       logout,
     }),
-    [token, user, socket, isReady, setToken, updateUser, login, logout]
+    [
+      token,
+      user,
+      socket,
+      hydrated,
+      isReady,
+      setToken,
+      updateUser,
+      login,
+      logout,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
