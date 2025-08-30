@@ -2,6 +2,15 @@
 
 **a full-stack real-time chat app** featuring authentication, user roles, WebSocket-powered messaging, and a custom-designed interface. everything you see here is handcrafted: frontend, backend, database, and the live communication layer.
 
+<p align="center">
+  <img src="./frontend/public/mobile1.jpg" alt="mobile view 1" width="200"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="./frontend/public/mobile2.jpg" alt="mobile view 2" width="200"/>
+</p>
+<p align="center">
+  <img src="./frontend/public/desktop.png" alt="desktop view" width="600"/>
+</p>
+
 ---
 
 ## why this project?
