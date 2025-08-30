@@ -27,17 +27,13 @@ i wanted to go beyond just building a typical CRUD app. this is a fully function
 - **admin and owner tools** for group management
 - **responsive UI** with React 19 + Tailwind
 
-## desktop and modile view
-
-_(preview screenshots - coming soon)_
-
 ---
 
 ## tech stack
 
 ### backend
 
-- Node.js + Express
+- Node.js + Express (REST API)
 - PostgreSQL + Prisma ORM
 - Cloudinary SDK
 - WebSockets (Socket.io)
@@ -70,12 +66,6 @@ _(preview screenshots - coming soon)_
 
 ---
 
-## personal note
-
-i am currently planning to build a fully functional social media/dating app called **meet-me** (in progress). before diving into that, i wanted to build something more focused to gain confidence and experience with real-time systems.
-
-originally, message-me was supposed to be a small warm-up project — but honestly, I enjoyed the process so much and just could not stop building. i kept adding features, refining the architecture, and experimenting with UI. it became a project i am truly proud of.
-
 ## what i learned
 
 - state management in real-time apps
@@ -83,7 +73,11 @@ originally, message-me was supposed to be a small warm-up project — but honest
 - integrating third-party tools like Cloudinary
 - writing clean, testable, and maintainable backend code
 
-but mostly i enjoyed seeing it all come together and became something meaningful
+## personal note
+
+i am currently planning to build a fully functional social media/dating app called **meet-me** (in progress). before diving into that, i wanted to build something more focused to gain confidence and experience with real-time systems.
+
+originally, message-me was supposed to be a small warm-up project — but honestly, i enjoyed the process so much and just could not stop building. i kept adding features, refining the architecture, and experimenting with UI. it became a project i am truly proud of.
 
 ---
 
